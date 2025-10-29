@@ -2,7 +2,12 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { RecordFormat, RecordCategory } from './record.enum';
 
-@Schema({ timestamps: true })
+@Schema({
+  timestamps: {
+    createdAt: 'created',
+    updatedAt: 'lastModified',
+  },
+})
 export class Record extends Document {
   @Prop({ required: true })
   artist: string;
@@ -22,14 +27,19 @@ export class Record extends Document {
   @Prop({ enum: RecordCategory, required: true })
   category: RecordCategory;
 
-  @Prop({ default: Date.now })
-  created: Date;
-
-  @Prop({ default: Date.now })
-  lastModified: Date;
-
   @Prop({ required: false })
   mbid?: string;
 }
 
 export const RecordSchema = SchemaFactory.createForClass(Record);
+
+RecordSchema.index({
+  artist: 'text',
+  album: 'text',
+  category: 'text',
+  format: 'text',
+});
+RecordSchema.index({ artist: 1, album: 1, format: 1 }, { unique: true });
+RecordSchema.index({ format: 1 });
+RecordSchema.index({ category: 1 });
+RecordSchema.index({ price: 1 });

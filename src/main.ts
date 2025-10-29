@@ -21,7 +21,7 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
-  // Swagger configuration
+
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Record API')
     .setDescription('The record management API')

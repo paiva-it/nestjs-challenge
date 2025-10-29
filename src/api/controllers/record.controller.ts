@@ -7,19 +7,32 @@ import {
   Query,
   Put,
   InternalServerErrorException,
+  UseGuards,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Record } from '../schemas/record.schema';
 import { Model } from 'mongoose';
-import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { CreateRecordRequestDTO } from '../dtos/create-record.request.dto';
-import { RecordCategory, RecordFormat } from '../schemas/record.enum';
 import { UpdateRecordRequestDTO } from '../dtos/update-record.request.dto';
+import { RecordService } from '../services/record.service';
+import { CursorPaginationResponseDto } from '../common/pagination/dtos/cursor-pagination.response.dto';
+import { SearchRecordQueryDto } from '../dtos/search-record.query.dto';
+import { CursorPaginationQueryDto } from '../common/pagination/dtos/cursor-pagination.query.dto';
+import { OffsetPaginationQueryDto } from '../common/pagination/dtos/offset-pagination.query.dto';
+import { OffsetPaginationResponseDto } from '../common/pagination/dtos/offset-pagination.response.dto';
+import { MockAuthGuard } from '../guards/mock-auth.guard';
 
 @Controller('records')
 export class RecordController {
   constructor(
     @InjectModel('Record') private readonly recordModel: Model<Record>,
+    private readonly service: RecordService,
   ) {}
 
   @Post()
@@ -62,84 +75,30 @@ export class RecordController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all records with optional filters' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of records',
-    type: [Record],
+  @ApiOperation({ summary: 'Search through records, using cursor pagination' })
+  @ApiOkResponse({
+    description: 'Cursor-paginated list of records',
+    type: CursorPaginationResponseDto<Record>,
   })
-  @ApiQuery({
-    name: 'q',
-    required: false,
-    description:
-      'Search query (search across multiple fields like artist, album, category, etc.)',
-    type: String,
+  async findWithCursorPagination(
+    @Query() searchFilters: SearchRecordQueryDto,
+    @Query() pagination: CursorPaginationQueryDto,
+  ) {
+    return this.service.findWithCursorPagination(searchFilters, pagination);
+  }
+
+  @Get('/offset')
+  @UseGuards(MockAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Search through records, using offset pagination' })
+  @ApiOkResponse({
+    description: 'Offset-paginated list of records',
+    type: OffsetPaginationResponseDto<Record>,
   })
-  @ApiQuery({
-    name: 'artist',
-    required: false,
-    description: 'Filter by artist name',
-    type: String,
-  })
-  @ApiQuery({
-    name: 'album',
-    required: false,
-    description: 'Filter by album name',
-    type: String,
-  })
-  @ApiQuery({
-    name: 'format',
-    required: false,
-    description: 'Filter by record format (Vinyl, CD, etc.)',
-    enum: RecordFormat,
-    type: String,
-  })
-  @ApiQuery({
-    name: 'category',
-    required: false,
-    description: 'Filter by record category (e.g., Rock, Jazz)',
-    enum: RecordCategory,
-    type: String,
-  })
-  async findAll(
-    @Query('q') q?: string,
-    @Query('artist') artist?: string,
-    @Query('album') album?: string,
-    @Query('format') format?: RecordFormat,
-    @Query('category') category?: RecordCategory,
-  ): Promise<Record[]> {
-    const allRecords = await this.recordModel.find().exec();
-
-    const filteredRecords = allRecords.filter((record) => {
-      let match = true;
-
-      if (q) {
-        match =
-          match &&
-          (record.artist.includes(q) ||
-            record.album.includes(q) ||
-            record.category.includes(q));
-      }
-
-      if (artist) {
-        match = match && record.artist.includes(artist);
-      }
-
-      if (album) {
-        match = match && record.album.includes(album);
-      }
-
-      if (format) {
-        match = match && record.format === format;
-      }
-
-      if (category) {
-        match = match && record.category === category;
-      }
-
-      return match;
-    });
-
-    return filteredRecords;
+  async findWithOffsetPagination(
+    @Query() searchFilters: SearchRecordQueryDto,
+    @Query() pagination: OffsetPaginationQueryDto,
+  ) {
+    return this.service.findWithOffsetPagination(searchFilters, pagination);
   }
 }
