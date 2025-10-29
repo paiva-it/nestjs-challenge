@@ -1,11 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { AppConfig } from './app.config';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'; // Import Swagger
+import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  const config = app.get(ConfigService);
+  const host = config.get<string>('server.host');
+  const port = config.get<number>('server.port');
+  const env = config.get<string>('server.env');
+
+  console.info(`Environment: ${env}`);
+  console.info(`Listening on ${host}:${port}`);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -14,14 +22,15 @@ async function bootstrap() {
     }),
   );
   // Swagger configuration
-  const config = new DocumentBuilder()
+  const swaggerConfig = new DocumentBuilder()
     .setTitle('Record API')
     .setDescription('The record management API')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('swagger', app, document);
 
-  await app.listen(AppConfig.port);
+  await app.listen(port, host);
 }
+
 bootstrap();

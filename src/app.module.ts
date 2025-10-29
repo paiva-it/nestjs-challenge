@@ -1,11 +1,33 @@
 import { Module } from '@nestjs/common';
-import { RecordModule } from './api/record.module';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AppConfig } from './app.config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
+import { validationSchema } from './configuration/env.validation';
+import mongodbConfig from './configuration/mongodb.config';
+import paginationConfig from './configuration/pagination.config';
+
+import { RecordModule } from './api/record.module';
+import serverConfig from './configuration/server.config';
 
 @Module({
-  imports: [MongooseModule.forRoot(AppConfig.mongoUrl), RecordModule],
-  controllers: [],
-  providers: [],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [serverConfig, mongodbConfig, paginationConfig],
+      validationSchema,
+      validationOptions: {
+        abortEarly: false,
+      },
+    }),
+
+    MongooseModule.forRootAsync({
+      useFactory: (config: ConfigService) => ({
+        uri: config.get<string>('mongodb.uri', { infer: true }),
+      }),
+      inject: [ConfigService],
+    }),
+
+    RecordModule,
+  ],
 })
 export class AppModule {}

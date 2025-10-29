@@ -1,8 +1,8 @@
 import * as mongoose from 'mongoose';
 import { Record, RecordSchema } from './src/api/schemas/record.schema';
 import * as fs from 'fs';
-import { AppConfig } from './src/app.config';
 import * as readline from 'readline';
+import { MongoConfig } from 'src/configuration/mongodb.config';
 
 async function setupDatabase() {
   try {
@@ -22,7 +22,7 @@ async function setupDatabase() {
           RecordSchema,
         );
 
-        await mongoose.connect(AppConfig.mongoUrl);
+        await mongoose.connect(MongoConfig.mongoUrl);
 
         if (answer.toLowerCase() === 'y') {
           await recordModel.deleteMany({});
