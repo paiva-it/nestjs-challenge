@@ -29,17 +29,15 @@ export class Record extends Document {
 
   @Prop({ required: false })
   mbid?: string;
+
+  @Prop({ type: [String], default: [] })
+  searchTokens: string[];
 }
 
 export const RecordSchema = SchemaFactory.createForClass(Record);
 
-RecordSchema.index({
-  artist: 'text',
-  album: 'text',
-  category: 'text',
-  format: 'text',
-});
 RecordSchema.index({ artist: 1, album: 1, format: 1 }, { unique: true });
 RecordSchema.index({ format: 1 });
 RecordSchema.index({ category: 1 });
 RecordSchema.index({ price: 1 });
+RecordSchema.index({ searchTokens: 1 });

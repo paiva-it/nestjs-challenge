@@ -1,6 +1,7 @@
 import { FilterQuery } from 'mongoose';
 import { SearchRecordQueryDto } from '../dtos/search-record.query.dto';
 import { Record } from '../schemas/record.schema';
+import { normalizeString } from '../common/utils/normalize-string.util';
 
 export function buildRecordSearchQuery(
   filters: SearchRecordQueryDto,
@@ -8,16 +9,16 @@ export function buildRecordSearchQuery(
   const query: FilterQuery<Record> = {};
 
   if (filters.artist) {
-    query.artist = filters.artist;
+    query.artist = filters.artist.trim();
   }
   if (filters.album) {
-    query.album = filters.album;
+    query.album = filters.album.trim();
   }
   if (filters.format) {
-    query.format = filters.format;
+    query.format = filters.format.trim();
   }
   if (filters.category) {
-    query.category = filters.category;
+    query.category = filters.category.trim();
   }
 
   if (filters.price_lte) {
@@ -34,8 +35,10 @@ export function buildRecordSearchQuery(
     query.qty = { ...query.qty, $gte: filters.qty_gte };
   }
 
-  if (filters.q) {
-    query.$text = { $search: filters.q };
+  if (filters.q && filters.q.trim().length > 0) {
+    const tokens = normalizeString(filters.q).split(' ');
+
+    query.searchTokens = { $in: tokens };
   }
 
   return query;

@@ -19,7 +19,7 @@
 - Added Joi validation for environment variables (`env.validation.ts`).
 - Split configuration into dedicated files for scalability (`server.config.ts`, `mongodb.config.ts`, `pagination.config.ts`).
 - Enforced DX & safety rules (required `MONGO_URL`, bounded pagination limits, explicit defaults, abortEarly=false for aggregated validation errors).
-- Uninstalled `dotenv` (superseded by `@nestjs/config`).
+- Removed `dotenv` usage from the app in favor of `@nestjs/config` (kept for setup script only).
 
 # Implementing better find performance
 
@@ -89,3 +89,15 @@
 ## Module
 
 - Module wires repository via port and registers schema; enables DI of repository + service.
+
+# Allow for partial text search on find q parameter using nGrams
+
+- Parity with original solution
+- Create nGram generator helper function
+- Update setup script to compute nGrams for existing records
+- Once implementing add and update, explicitly compute nGrams for new/updated records
+- Replace the text index with nGram-based indexing for improved partial matching.
+- Update the QueryBuilder to utilize our searchFields and split q into tokens by space.
+- Pros / Cons:
+  - Pros: Improved partial matching capabilities; better user search experience.
+  - Cons: Increased index size; write performance and storage trade-off.
