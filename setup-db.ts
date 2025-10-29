@@ -3,7 +3,7 @@ import { Record, RecordSchema } from './src/api/schemas/record.schema';
 import * as fs from 'fs';
 import * as readline from 'readline';
 import * as dotenv from 'dotenv';
-import { generateNgrams } from 'src/api/common/utils/generate-ngrams.util';
+import { generateNgrams } from './src/api/common/utils/generate-ngrams.util';
 
 dotenv.config();
 

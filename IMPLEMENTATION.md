@@ -101,3 +101,9 @@
 - Pros / Cons:
   - Pros: Improved partial matching capabilities; better user search experience.
   - Cons: Increased index size; write performance and storage trade-off.
+
+# Testing pagination, helpers, exceptions and overall behaviour
+
+- Tested all .util files and any relevant service, repository and controller behavior.
+- Found multiple edge cases and fixed them accordingly.
+- Updated some behaviours based on test findings.

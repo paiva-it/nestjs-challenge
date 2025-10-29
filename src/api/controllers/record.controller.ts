@@ -27,6 +27,18 @@ import { CursorPaginationQueryDto } from '../common/pagination/dtos/cursor-pagin
 import { OffsetPaginationQueryDto } from '../common/pagination/dtos/offset-pagination.query.dto';
 import { OffsetPaginationResponseDto } from '../common/pagination/dtos/offset-pagination.response.dto';
 import { MockAuthGuard } from '../guards/mock-auth.guard';
+import { generateNgrams } from '../common/utils/generate-ngrams.util';
+
+function computeSearchTokens(doc: Partial<Record>): string[] {
+  const tokens: string[] = [];
+
+  if (doc.artist) tokens.push(...generateNgrams(doc.artist));
+  if (doc.album) tokens.push(...generateNgrams(doc.album));
+  if (doc.category) tokens.push(...generateNgrams(doc.category));
+  if (doc.format) tokens.push(...generateNgrams(doc.format));
+
+  return [...new Set(tokens)];
+}
 
 @Controller('records')
 export class RecordController {
@@ -48,6 +60,8 @@ export class RecordController {
       format: request.format,
       category: request.category,
       mbid: request.mbid,
+      //TODO: Remove once POST request is implemented correctly
+      searchTokens: computeSearchTokens(request),
     });
   }
 

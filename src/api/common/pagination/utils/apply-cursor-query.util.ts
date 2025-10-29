@@ -1,5 +1,5 @@
 import { FilterQuery, Types } from 'mongoose';
-import { InvalidCursorException } from 'src/api/exceptions/invalid-cursor.exception';
+import { InvalidCursorException } from '../exceptions/invalid-cursor.exception';
 
 /**
  * Creates a new MongoDB query with cursor-based pagination applied (never mutates the original query).

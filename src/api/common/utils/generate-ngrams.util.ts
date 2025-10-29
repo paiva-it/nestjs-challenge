@@ -11,5 +11,5 @@ export function generateNgrams(str: string): string[] {
     }
   }
 
-  return ngrams;
+  return [...new Set(ngrams)];
 }

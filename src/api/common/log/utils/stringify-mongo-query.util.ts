@@ -6,14 +6,7 @@ export function stringifyMongoQuery(input: FilterQuery<unknown>): string {
   return JSON.stringify(
     input,
     (_, value) => {
-      if (typeof value === 'object' && value !== null) {
-        if (seen.has(value)) {
-          return '[Circular]';
-        }
-        seen.add(value);
-      }
-
-      if (value instanceof Types.ObjectId) {
+      if (Types.ObjectId.isValid(value)) {
         return value.toString();
       }
 
@@ -25,11 +18,11 @@ export function stringifyMongoQuery(input: FilterQuery<unknown>): string {
         return value.toString();
       }
 
-      if (Array.isArray(value)) {
-        return `[Array(${value.length})]`;
+      if (typeof value === 'bigint') {
+        return `${value.toString()}n`;
       }
 
-      if (typeof value === 'bigint') {
+      if (typeof value === 'symbol') {
         return value.toString();
       }
 
@@ -37,8 +30,15 @@ export function stringifyMongoQuery(input: FilterQuery<unknown>): string {
         return `[Function ${value.name}]`;
       }
 
-      if (typeof value === 'symbol') {
-        return value.toString();
+      if (Array.isArray(value)) {
+        return `[Array(${value.length})]`;
+      }
+
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular]';
+        }
+        seen.add(value);
       }
 
       return value;

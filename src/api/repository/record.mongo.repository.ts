@@ -8,7 +8,7 @@ import { RecordRepositoryPort } from '../ports/record.repository.port';
 import { InjectModel } from '@nestjs/mongoose';
 import { Record } from '../schemas/record.schema';
 import { FilterQuery, Model } from 'mongoose';
-import paginationConfig from 'src/configuration/pagination.config';
+import paginationConfig from '../../configuration/pagination.config';
 import { ConfigType } from '@nestjs/config';
 import { CursorPaginationQueryDto } from '../common/pagination/dtos/cursor-pagination.query.dto';
 import {
@@ -21,7 +21,7 @@ import {
   OffsetPaginationResponseDto,
   buildOffsetPaginationResponse,
 } from '../common/pagination/dtos/offset-pagination.response.dto';
-import mongodbConfig from 'src/configuration/mongodb.config';
+import mongodbConfig from '../../configuration/mongodb.config';
 import { ensureLimitWithinBounds } from '../common/pagination/utils/ensure-limit.util';
 import { applyCursorQuery } from '../common/pagination/utils/apply-cursor-query.util';
 import { computeOffset } from '../common/pagination/utils/compute-offset.util';
@@ -44,7 +44,7 @@ export class RecordMongoRepository implements RecordRepositoryPort {
 
   async findWithCursorPagination(
     query: FilterQuery<Record>,
-    { limit, cursor }: CursorPaginationQueryDto,
+    { limit = this.pagination.defaultLimit, cursor }: CursorPaginationQueryDto,
   ): Promise<CursorPaginationResponseDto<Record>> {
     ensureLimitWithinBounds(limit, this.pagination.maxLimit);
 
@@ -67,7 +67,10 @@ export class RecordMongoRepository implements RecordRepositoryPort {
 
   async findWithOffsetPagination(
     query: FilterQuery<Record>,
-    { page = 1, limit }: OffsetPaginationQueryDto,
+    {
+      limit = this.pagination.defaultLimit,
+      page = 1,
+    }: OffsetPaginationQueryDto,
   ): Promise<OffsetPaginationResponseDto<Record>> {
     ensureLimitWithinBounds(limit, this.pagination.maxLimit);
 

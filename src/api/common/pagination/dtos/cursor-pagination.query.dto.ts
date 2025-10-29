@@ -19,7 +19,6 @@ export class CursorPaginationQueryDto {
       'Number of records to return, limited per environment settings, defaults to 100',
     type: Number,
     example: 20,
-    default: 20,
     minimum: 1,
     required: false,
   })
@@ -27,5 +26,5 @@ export class CursorPaginationQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  limit: number = 20;
+  limit?: number;
 }
