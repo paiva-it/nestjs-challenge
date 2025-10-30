@@ -1,7 +1,6 @@
 # General Notes
 
 - Suggest different folder structure (module-first, then type) — kept original for PR readability and easier diff comparison.
-- Add tests after committing the first version of the implementation for clearer focus on implementation and easier bug isolation.
 
 # AI Usage
 
@@ -107,3 +106,46 @@
 - Tested all .util files and any relevant service, repository and controller behavior.
 - Found multiple edge cases and fixed them accordingly.
 - Updated some behaviours based on test findings.
+
+# Implement Record Creation and Editing with Repository and Service
+
+## Repository
+
+- Main concerns:
+  - Implement `create` method for inserting new records with automatic search token generation using the token service.
+  - Implement `update` method for modifying existing records with conditional token recomputation based on `modifiedPaths()`.
+  - Handle duplicate key errors from unique constraints and transform them into domain-specific exceptions.
+  - Handle not-found scenarios gracefully.
+  - Generate search tokens automatically during record creation through the injected token service port.
+  - For updates: load the current record, apply changes with `doc.set()`, and recompute tokens only when searchable fields (`artist`, `album`, `category`, `format`) are modified.
+  - Use MongoDB transactions to ensure atomicity between record updates and token recomputation.
+  - Depend on `RecordTokenServicePort` instead of internal helpers to keep token generation swappable and maintain separation of concerns.
+
+## Record Token Service
+
+- Exposed through a `RecordTokenServicePort` to allow swapping implementations without modifying repository logic.
+- Responsible for generating search tokens based on key fields (`artist`, `album`, `category`, `format`) using N-gram generation.
+- Offers `needsRecompute` to determine if token regeneration is required by checking modified document paths.
+- Deduplicates tokens before returning to improve search efficiency.
+
+## RecordAlreadyExistsException
+
+- New custom exception to represent duplicate record scenarios.
+- Extends `ConflictException` and provides a meaningful error message with the known record fields.
+
+## Service
+
+- For now, without MBID integration:
+  - Implement `createRecord` method that delegates to repository's `create`.
+  - Implement `updateRecord` method that delegates to repository's `update`.
+
+## Controller
+
+- Cleanup existing create and update methods to use new service methods.
+- Ensure proper DTO usage and response shaping.
+
+## Testing
+
+- Smaller implementation chunks allowed for focused unit tests.
+- Comprehensive test coverage for all new features and edge cases.
+- Utilized mocking and stubbing to isolate unit tests from external dependencies.

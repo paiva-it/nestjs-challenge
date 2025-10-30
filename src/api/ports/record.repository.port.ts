@@ -8,6 +8,8 @@ import { OffsetPaginationQueryDto } from '../common/pagination/dtos/offset-pagin
 export const RecordRepositoryPort = Symbol('RecordRepositoryPort');
 
 export interface RecordRepositoryPort {
+  create: (record: Partial<Record>) => Promise<Record>;
+  update: (id: string, update: Partial<Record>) => Promise<Record>;
   findWithCursorPagination(
     query: FilterQuery<Record>,
     pagination: CursorPaginationQueryDto,

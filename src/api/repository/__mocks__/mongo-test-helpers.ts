@@ -55,27 +55,80 @@ export class QueryMock<T extends { _id: string }> {
 
 export function buildMockModel(docs: TestRecord[]): any {
   return {
+    async create(record: any) {
+      return record;
+    },
+
     find(filter: FilterQuery<TestRecord>) {
       const filtered = docs.filter((doc) => {
-        if (filter._id?.$gt) {
-          return doc._id > filter._id?.$gt.toString();
+        if ((filter as any)._id?.$gt) {
+          return doc._id > (filter as any)._id?.$gt.toString();
         }
         return true;
       });
-
       return new QueryMock<TestRecord>(filtered);
     },
 
     countDocuments(filter: FilterQuery<TestRecord>) {
       const count = docs.filter((doc) => {
-        if (filter._id?.$gt) {
-          return doc._id > filter._id?.$gt.toString();
+        if ((filter as any)._id?.$gt) {
+          return doc._id > (filter as any)._id?.$gt.toString();
         }
         return true;
       }).length;
-
       return {
         exec: async () => count,
+      };
+    },
+    findById(id: string) {
+      const doc = docs.find((d) => d._id.toString() === id) || null;
+      const mongooseDoc = doc && {
+        ...doc,
+        toObject: () => ({ ...doc }),
+        set(update: any) {
+          Object.assign(this, update);
+          return this;
+        },
+        modifiedPaths() {
+          return Object.keys(doc || {});
+        },
+        save: async () => ({ ...doc }),
+      };
+      return {
+        session() {
+          return this;
+        },
+        then(resolve: any, reject: any) {
+          try {
+            resolve(mongooseDoc);
+          } catch (e) {
+            reject(e);
+          }
+        },
+      } as any;
+    },
+
+    findByIdAndUpdate(id: string, update: any) {
+      return {
+        async exec() {
+          const existingIndex = docs.findIndex((d) => d._id.toString() === id);
+          if (existingIndex === -1) return null;
+          const merged = { ...docs[existingIndex], ...update };
+          docs[existingIndex] = merged;
+          return merged;
+        },
+      };
+    },
+
+    async startSession() {
+      return {
+        startTransaction() {},
+        async commitTransaction() {},
+        async abortTransaction() {},
+        endSession() {},
+        inTransaction() {
+          return true;
+        },
       };
     },
   };

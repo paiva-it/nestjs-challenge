@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { RecordRepositoryPort } from '../ports/record.repository.port';
 import { InjectModel } from '@nestjs/mongoose';
@@ -26,6 +27,8 @@ import { ensureLimitWithinBounds } from '../common/pagination/utils/ensure-limit
 import { applyCursorQuery } from '../common/pagination/utils/apply-cursor-query.util';
 import { computeOffset } from '../common/pagination/utils/compute-offset.util';
 import { stringifyMongoQuery } from '../common/log/utils/stringify-mongo-query.util';
+import { RecordAlreadyExistsException } from '../exceptions/record.already-exists.exception';
+import { RecordTokenServicePort } from '../ports/record-token.service.port';
 
 @Injectable()
 export class RecordMongoRepository implements RecordRepositoryPort {
@@ -40,7 +43,57 @@ export class RecordMongoRepository implements RecordRepositoryPort {
 
     @Inject(mongodbConfig.KEY)
     private readonly mongodb: ConfigType<typeof mongodbConfig>,
+
+    @Inject(RecordTokenServicePort)
+    private readonly tokenService: RecordTokenServicePort,
   ) {}
+
+  async create(record: Partial<Record>): Promise<Record> {
+    try {
+      const mutatedDTO = {
+        ...record,
+        searchTokens: this.tokenService.generate(record),
+      };
+
+      return await this.model.create(mutatedDTO);
+    } catch (err) {
+      if (err.code === 11000) {
+        throw new RecordAlreadyExistsException(record);
+      }
+      throw err;
+    }
+  }
+
+  async update(id: string, update: Partial<Record>): Promise<Record> {
+    const session = await this.model.startSession();
+
+    try {
+      session.startTransaction();
+
+      const doc = await this.model.findById(id).session(session);
+      if (!doc) throw new NotFoundException('Record not found');
+
+      doc.set(update);
+
+      if (this.tokenService.needsRecompute(doc.modifiedPaths())) {
+        doc.set({ searchTokens: this.tokenService.generate(doc.toObject()) });
+      }
+
+      const updated = await doc.save({ session });
+      await session.commitTransaction();
+
+      return updated;
+    } catch (err) {
+      await session.abortTransaction();
+
+      if (err.code === 11000) {
+        throw new RecordAlreadyExistsException(update);
+      }
+      throw err;
+    } finally {
+      await session.endSession();
+    }
+  }
 
   async findWithCursorPagination(
     query: FilterQuery<Record>,

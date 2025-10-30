@@ -1,19 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecordController } from './record.controller';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Record } from '../schemas/record.schema';
 import { CreateRecordRequestDTO } from '../dtos/create-record.request.dto';
+import { UpdateRecordRequestDTO } from '../dtos/update-record.request.dto';
 import { RecordCategory, RecordFormat } from '../schemas/record.enum';
 import { RecordService } from '../services/record.service';
 import { MockAuthGuard } from '../guards/mock-auth.guard';
 import { CursorPaginationResponseDto } from '../common/pagination/dtos/cursor-pagination.response.dto';
 import { OffsetPaginationResponseDto } from '../common/pagination/dtos/offset-pagination.response.dto';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { Record } from '../schemas/record.schema';
+import { RecordAlreadyExistsException } from '../exceptions/record.already-exists.exception';
 
 describe('RecordController', () => {
   let controller: RecordController;
-  let recordModel: Model<Record>;
   let service: RecordService;
 
   beforeEach(async () => {
@@ -21,19 +20,10 @@ describe('RecordController', () => {
       controllers: [RecordController],
       providers: [
         {
-          provide: getModelToken('Record'),
-          useValue: {
-            new: jest.fn().mockResolvedValue({}),
-            constructor: jest.fn().mockResolvedValue({}),
-            find: jest.fn(),
-            findById: jest.fn(),
-            save: jest.fn(),
-            create: jest.fn(),
-          },
-        },
-        {
           provide: RecordService,
           useValue: {
+            create: jest.fn(),
+            update: jest.fn(),
             findWithCursorPagination: jest.fn(),
             findWithOffsetPagination: jest.fn(),
           },
@@ -42,7 +32,6 @@ describe('RecordController', () => {
     }).compile();
 
     controller = module.get<RecordController>(RecordController);
-    recordModel = module.get<Model<Record>>(getModelToken('Record'));
     service = module.get<RecordService>(RecordService);
   });
 
@@ -62,23 +51,52 @@ describe('RecordController', () => {
       album: 'Test Record',
       price: 100,
       qty: 10,
+      category: RecordCategory.ALTERNATIVE,
+      format: RecordFormat.VINYL,
     };
-
-    jest.spyOn(recordModel, 'create').mockResolvedValue(savedRecord as any);
+    (service.create as jest.Mock).mockResolvedValue(savedRecord as Record);
 
     const result = await controller.create(createRecordDto);
 
     expect(result).toEqual(savedRecord);
-    expect(recordModel.create).toHaveBeenCalledWith({
+    expect(service.create).toHaveBeenCalledWith(createRecordDto);
+  });
+
+  it('should update an existing record', async () => {
+    const updateDto: UpdateRecordRequestDTO = {
+      price: 150,
+      qty: 5,
+    };
+    const updated: Partial<Record> = {
+      _id: '1',
       artist: 'Test',
       album: 'Test Record',
-      price: 100,
-      qty: 10,
+      price: 150,
+      qty: 5,
       category: RecordCategory.ALTERNATIVE,
       format: RecordFormat.VINYL,
-      mbid: undefined,
-      searchTokens: expect.any(Array),
-    });
+    } as Record;
+    (service.update as jest.Mock).mockResolvedValue(updated as Record);
+    const result = await controller.update('1', updateDto);
+    expect(result).toEqual(updated);
+    expect(service.update).toHaveBeenCalledWith('1', updateDto);
+  });
+
+  it('propagates conflict error from service on create', async () => {
+    const dto: CreateRecordRequestDTO = {
+      artist: 'Dup',
+      album: 'Dup Album',
+      price: 10,
+      qty: 1,
+      format: RecordFormat.VINYL,
+      category: RecordCategory.ROCK,
+    };
+    (service.create as jest.Mock).mockRejectedValue(
+      new RecordAlreadyExistsException(dto),
+    );
+    await expect(controller.create(dto)).rejects.toThrow(
+      /Record already exists/,
+    );
   });
 
   it('should fetch records using cursor pagination', async () => {

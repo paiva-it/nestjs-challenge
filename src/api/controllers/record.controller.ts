@@ -6,12 +6,9 @@ import {
   Param,
   Query,
   Put,
-  InternalServerErrorException,
   UseGuards,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
 import { Record } from '../schemas/record.schema';
-import { Model } from 'mongoose';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -27,42 +24,17 @@ import { CursorPaginationQueryDto } from '../common/pagination/dtos/cursor-pagin
 import { OffsetPaginationQueryDto } from '../common/pagination/dtos/offset-pagination.query.dto';
 import { OffsetPaginationResponseDto } from '../common/pagination/dtos/offset-pagination.response.dto';
 import { MockAuthGuard } from '../guards/mock-auth.guard';
-import { generateNgrams } from '../common/utils/generate-ngrams.util';
-
-function computeSearchTokens(doc: Partial<Record>): string[] {
-  const tokens: string[] = [];
-
-  if (doc.artist) tokens.push(...generateNgrams(doc.artist));
-  if (doc.album) tokens.push(...generateNgrams(doc.album));
-  if (doc.category) tokens.push(...generateNgrams(doc.category));
-  if (doc.format) tokens.push(...generateNgrams(doc.format));
-
-  return [...new Set(tokens)];
-}
 
 @Controller('records')
 export class RecordController {
-  constructor(
-    @InjectModel('Record') private readonly recordModel: Model<Record>,
-    private readonly service: RecordService,
-  ) {}
+  constructor(private readonly service: RecordService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new record' })
   @ApiResponse({ status: 201, description: 'Record successfully created' })
   @ApiResponse({ status: 400, description: 'Bad Request' })
   async create(@Body() request: CreateRecordRequestDTO): Promise<Record> {
-    return await this.recordModel.create({
-      artist: request.artist,
-      album: request.album,
-      price: request.price,
-      qty: request.qty,
-      format: request.format,
-      category: request.category,
-      mbid: request.mbid,
-      //TODO: Remove once POST request is implemented correctly
-      searchTokens: computeSearchTokens(request),
-    });
+    return await this.service.create(request);
   }
 
   @Put(':id')
@@ -73,19 +45,7 @@ export class RecordController {
     @Param('id') id: string,
     @Body() updateRecordDto: UpdateRecordRequestDTO,
   ): Promise<Record> {
-    const record = await this.recordModel.findById(id);
-    if (!record) {
-      throw new InternalServerErrorException('Record not found');
-    }
-
-    Object.assign(record, updateRecordDto);
-
-    const updated = await this.recordModel.updateOne(record);
-    if (!updated) {
-      throw new InternalServerErrorException('Failed to update record');
-    }
-
-    return record;
+    return await this.service.update(id, updateRecordDto);
   }
 
   @Get()

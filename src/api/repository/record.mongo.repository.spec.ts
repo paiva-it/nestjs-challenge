@@ -1,21 +1,382 @@
 import { RecordMongoRepository } from './record.mongo.repository';
-
+import { RecordTokenServicePort } from '../ports/record-token.service.port';
+import { RecordFormat, RecordCategory } from '../schemas/record.enum';
+import { Record } from '../schemas/record.schema';
 import {
   buildMockModel,
   oid,
   TestRecord,
 } from './__mocks__/mongo-test-helpers';
-
 import { InvalidCursorException } from '../common/pagination/exceptions/invalid-cursor.exception';
 import { InvalidPageException } from '../common/pagination/exceptions/invalid-page.exception';
+
+type Doc = {
+  _id: string;
+  artist?: string;
+  album?: string;
+  category?: RecordCategory;
+  format?: RecordFormat;
+  qty?: number;
+  searchTokens?: string[];
+};
 
 const MAX_LIMIT = 5;
 const paginationCfg = { maxLimit: MAX_LIMIT, defaultLimit: 3 };
 const mongodbCfg = { uri: 'mock-uri', queryWarningThresholdMs: 1000 };
-const baseDocs = Array.from({ length: 10 }, (_, i) => ({
+
+const mockTokenServiceGlobal: RecordTokenServicePort = {
+  needsRecompute: (paths) =>
+    paths.some((p) => ['artist', 'album', 'category', 'format'].includes(p)),
+  generate: (doc: object) => {
+    const r = doc as Partial<Record>;
+    const raw = [r.artist, r.album, r.category, r.format]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return raw ? raw.split(/\s+/) : [];
+  },
+};
+
+const baseDocs: TestRecord[] = Array.from({ length: 10 }, (_, i) => ({
   _id: oid(i),
   artist: `A${i}`,
 })) as TestRecord[];
+
+describe('RecordMongoRepository - create & update', () => {
+  const paginationCfgLocal = { maxLimit: 50, defaultLimit: 10 };
+  const mongodbCfgLocal = { uri: 'mock', queryWarningThresholdMs: 1000 };
+
+  const mockTokenService: RecordTokenServicePort = {
+    needsRecompute: (paths) =>
+      paths.some((p) => ['artist', 'album', 'category', 'format'].includes(p)),
+    generate: jest.fn((doc: object) => {
+      const r = doc as Partial<Record>;
+      const raw = [r.artist, r.album, r.category, r.format]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return raw ? raw.split(/\s+/) : [];
+    }),
+  };
+
+  beforeEach(() => {
+    (mockTokenService.generate as jest.Mock).mockClear();
+  });
+
+  interface MockDoc extends Doc {
+    set: jest.Mock<void, [Partial<Record>]>;
+    modifiedPaths: jest.Mock<string[]>;
+    toObject: jest.Mock<any>;
+    save: jest.Mock<Promise<MockDoc>>;
+    [key: string]: any;
+  }
+
+  function buildModelForUpdate(
+    initial: Partial<Record> & { _id: string },
+    modifiedFields: string[],
+  ) {
+    const doc: MockDoc = {
+      ...initial,
+      set: jest.fn((update: Partial<Record>) => {
+        Object.assign(doc, update);
+        if (!doc.__captured) {
+          (doc as any).__captured = true;
+        }
+      }),
+      modifiedPaths: jest.fn(() => modifiedFields),
+      toObject: jest.fn(() => ({ ...doc })),
+      save: jest.fn(async () => doc),
+      _id: initial._id,
+      searchTokens: initial.searchTokens as string[] | undefined,
+    };
+
+    const session = {
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      abortTransaction: jest.fn(),
+      endSession: jest.fn(),
+    };
+
+    const model = {
+      startSession: jest.fn().mockResolvedValue(session),
+      findById: jest.fn().mockReturnValue({ session: () => doc }),
+    } as any;
+
+    return { model, doc, session };
+  }
+
+  function buildModelForCreate() {
+    const model = {
+      create: jest.fn(async (dto) => dto),
+    } as any;
+    return model;
+  }
+
+  it('computes searchTokens on create', async () => {
+    const model = buildModelForCreate();
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    const created = await repo.create({
+      artist: 'Pink Floyd',
+      album: 'The Wall',
+      category: RecordCategory.ROCK,
+      format: RecordFormat.VINYL,
+    });
+    expect(created.searchTokens).toBeDefined();
+    expect(Array.isArray(created.searchTokens)).toBe(true);
+    expect(created.searchTokens.length).toBeGreaterThan(0);
+    expect(model.create).toHaveBeenCalledWith(
+      expect.objectContaining({ searchTokens: expect.any(Array) }),
+    );
+  });
+
+  it('recomputes tokens only when relevant fields change', async () => {
+    const { model, doc } = buildModelForUpdate(
+      {
+        _id: oid(100),
+        artist: 'Led Zeppelin',
+        album: 'IV',
+        category: RecordCategory.ROCK,
+        format: RecordFormat.VINYL,
+        searchTokens: ['led', 'zeppelin', 'iv'],
+      },
+      ['qty'],
+    );
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    const updated = await repo.update(doc._id.toString(), { qty: 50 });
+    expect(updated.qty).toBe(50);
+    expect(updated.searchTokens).toEqual(['led', 'zeppelin', 'iv']);
+    expect(mockTokenService.generate).not.toHaveBeenCalled();
+  });
+
+  it('recomputes tokens when artist changes', async () => {
+    const { model, doc } = buildModelForUpdate(
+      {
+        _id: oid(101),
+        artist: 'Led Zeppelin',
+        album: 'IV',
+        category: RecordCategory.ROCK,
+        format: RecordFormat.VINYL,
+        searchTokens: ['led', 'zeppelin', 'iv'],
+      },
+      ['artist'],
+    );
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    const updated = await repo.update(doc._id.toString(), {
+      artist: 'Zeppelin',
+    });
+    expect(updated.artist).toBe('Zeppelin');
+    expect(updated.searchTokens).toBeDefined();
+    expect(mockTokenService.generate).toHaveBeenCalled();
+  });
+
+  it('recomputes tokens when album changes', async () => {
+    const { model, doc } = buildModelForUpdate(
+      {
+        _id: oid(102),
+        artist: 'Artist',
+        album: 'Old Album',
+        category: RecordCategory.ROCK,
+        format: RecordFormat.VINYL,
+        searchTokens: ['artist', 'old', 'album'],
+      },
+      ['album'],
+    );
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    const updated = await repo.update(doc._id.toString(), {
+      album: 'New Album',
+    });
+    expect(updated.album).toBe('New Album');
+    expect(updated.searchTokens).toBeDefined();
+    expect(mockTokenService.generate).toHaveBeenCalled();
+  });
+
+  it('recomputes tokens when category changes', async () => {
+    const { model, doc } = buildModelForUpdate(
+      {
+        _id: oid(103),
+        artist: 'Artist',
+        album: 'Album',
+        category: RecordCategory.ROCK,
+        format: RecordFormat.VINYL,
+        searchTokens: ['artist', 'album', 'rock'],
+      },
+      ['category'],
+    );
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    const updated = await repo.update(doc._id.toString(), {
+      category: RecordCategory.JAZZ,
+    });
+    expect(updated.category).toBe(RecordCategory.JAZZ);
+    expect(updated.searchTokens).toBeDefined();
+    expect(mockTokenService.generate).toHaveBeenCalled();
+  });
+
+  it('recomputes tokens when format changes', async () => {
+    const { model, doc } = buildModelForUpdate(
+      {
+        _id: oid(104),
+        artist: 'Artist',
+        album: 'Album',
+        category: RecordCategory.ROCK,
+        format: RecordFormat.VINYL,
+        searchTokens: ['artist', 'album', 'rock', 'vinyl'],
+      },
+      ['format'],
+    );
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    const updated = await repo.update(doc._id.toString(), {
+      format: RecordFormat.CD,
+    });
+    expect(updated.format).toBe(RecordFormat.CD);
+    expect(updated.searchTokens).toBeDefined();
+    expect(mockTokenService.generate).toHaveBeenCalled();
+  });
+
+  it('throws ConflictException on duplicate create (code 11000)', async () => {
+    const model = buildModelForCreate();
+    model.create.mockRejectedValue({ code: 11000 });
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    await expect(
+      repo.create({
+        artist: 'A',
+        album: 'B',
+        category: RecordCategory.ROCK,
+        format: RecordFormat.VINYL,
+      }),
+    ).rejects.toThrow(/Record already exists/);
+  });
+
+  it('propagates non-duplicate error on create', async () => {
+    const model = buildModelForCreate();
+    const originalError = new Error('unexpected write failure');
+    (originalError as any).code = 42;
+    model.create.mockRejectedValue(originalError);
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    await expect(
+      repo.create({
+        artist: 'Err',
+        album: 'Fail',
+        category: RecordCategory.ROCK,
+        format: RecordFormat.VINYL,
+      }),
+    ).rejects.toThrow(/unexpected write failure/);
+    try {
+      await repo.create({
+        artist: 'Err',
+        album: 'Fail',
+        category: RecordCategory.ROCK,
+        format: RecordFormat.VINYL,
+      });
+    } catch (e: any) {
+      expect(e.message).toBe('unexpected write failure');
+      expect(e.constructor.name).not.toBe('RecordAlreadyExistsException');
+    }
+  });
+
+  it('throws NotFoundException when updating missing record', async () => {
+    const session = {
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      abortTransaction: jest.fn(),
+      endSession: jest.fn(),
+    };
+    const model = {
+      startSession: jest.fn().mockResolvedValue(session),
+      findById: jest.fn().mockReturnValue({ session: () => null }),
+    } as any;
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    await expect(
+      repo.update('deadbeefdeadbeefdeadbeef', { qty: 1 }),
+    ).rejects.toThrow(/Record not found/);
+  });
+
+  it('throws ConflictException when update hits unique constraint (code 11000)', async () => {
+    const existing = {
+      _id: oid(105),
+      artist: 'Artist',
+      album: 'Album',
+      category: RecordCategory.ROCK,
+      format: RecordFormat.VINYL,
+      searchTokens: ['artist', 'album', 'rock', 'vinyl'],
+    };
+    const session = {
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      abortTransaction: jest.fn(),
+      endSession: jest.fn(),
+    };
+    const doc = {
+      ...existing,
+      set: jest.fn(),
+      modifiedPaths: jest.fn(() => ['artist']),
+      toObject: jest.fn(() => existing),
+      save: jest.fn(async () => {
+        const error: any = new Error('duplicate');
+        error.code = 11000;
+        throw error;
+      }),
+    };
+    const model = {
+      startSession: jest.fn().mockResolvedValue(session),
+      findById: jest.fn().mockReturnValue({ session: () => doc }),
+    } as any;
+    const repo = new RecordMongoRepository(
+      model,
+      paginationCfgLocal,
+      mongodbCfgLocal,
+      mockTokenService,
+    );
+    await expect(
+      repo.update(existing._id.toString(), { artist: 'Artist' }),
+    ).rejects.toThrow(/Record already exists/);
+    expect(session.abortTransaction).toHaveBeenCalled();
+  });
+});
 
 describe('RecordMongoRepository - cursor pagination', () => {
   let repo: RecordMongoRepository;
@@ -25,6 +386,7 @@ describe('RecordMongoRepository - cursor pagination', () => {
       buildMockModel(baseDocs),
       paginationCfg,
       mongodbCfg,
+      mockTokenServiceGlobal,
     );
   });
 
@@ -71,6 +433,7 @@ describe('RecordMongoRepository - cursor pagination', () => {
       buildMockModel(baseDocs),
       { defaultLimit: LIMIT, maxLimit: LIMIT },
       mongodbCfg,
+      mockTokenServiceGlobal,
     );
 
     const res = await repo.findWithCursorPagination({}, {});
@@ -94,6 +457,7 @@ describe('RecordMongoRepository - offset pagination', () => {
       buildMockModel(baseDocs),
       paginationCfg,
       mongodbCfg,
+      mockTokenServiceGlobal,
     );
   });
 
@@ -138,6 +502,7 @@ describe('RecordMongoRepository - offset pagination', () => {
       buildMockModel(docs),
       paginationCfg,
       mongodbCfg,
+      mockTokenServiceGlobal,
     );
 
     const res = await repo.findWithOffsetPagination({}, { page: 1, limit: 5 });
@@ -151,6 +516,7 @@ describe('RecordMongoRepository - offset pagination', () => {
       buildMockModel(baseDocs),
       { defaultLimit: LIMIT, maxLimit: LIMIT },
       mongodbCfg,
+      mockTokenServiceGlobal,
     );
 
     const res = await repo.findWithOffsetPagination({}, {});
@@ -192,6 +558,7 @@ describe('error handling (Promise.allSettled)', () => {
       errorModel,
       paginationCfg2,
       mongodbCfg2,
+      mockTokenServiceGlobal,
     );
     await expect(
       repoErr.findWithOffsetPagination({}, { page: 1, limit: 2 }),
@@ -221,6 +588,7 @@ describe('error handling (Promise.allSettled)', () => {
       errorModel,
       paginationCfg2,
       mongodbCfg2,
+      mockTokenServiceGlobal,
     );
     await expect(
       repoErr.findWithOffsetPagination({}, { page: 1, limit: 2 }),

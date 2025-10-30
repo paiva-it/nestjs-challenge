@@ -181,4 +181,70 @@ describe('RecordController (e2e)', () => {
       .expect(401);
     expect(res.body.message).toMatch(/Missing or invalid auth token/);
   });
+
+  describe('Create & Update pipelines', () => {
+    it('creates a record and returns 201', async () => {
+      const created = await createRecord({ artist: 'Update Flow Artist' });
+      expect(created.artist).toBe('Update Flow Artist');
+      expect(created).toHaveProperty('_id');
+      expect(created).toHaveProperty('searchTokens');
+    });
+
+    it('updates an existing record successfully', async () => {
+      const created = await createRecord({
+        artist: 'Artist To Update',
+        qty: 1,
+      });
+      const res = await request(app.getHttpServer())
+        .put(`/records/${created._id}`)
+        .send({ qty: 5 })
+        .expect(200);
+      expect(res.body.qty).toBe(5);
+      expect(res.body._id).toBe(created._id);
+    });
+
+    it('returns 404 when updating non-existent record', async () => {
+      const fakeId = new Types.ObjectId().toHexString();
+      const res = await request(app.getHttpServer())
+        .put(`/records/${fakeId}`)
+        .send({ qty: 99 })
+        .expect(404);
+      expect(res.body.message).toMatch(/Record not found/);
+    });
+
+    it('returns conflict when creating duplicate (same artist/album/format)', async () => {
+      const payload = {
+        artist: 'Duplicate Artist',
+        album: 'Duplicate Album',
+        price: 10,
+        qty: 1,
+        format: RecordFormat.VINYL,
+        category: RecordCategory.ROCK,
+      };
+      await request(app.getHttpServer())
+        .post('/records')
+        .send(payload)
+        .expect(201);
+      const res = await request(app.getHttpServer())
+        .post('/records')
+        .send(payload)
+        .expect(409);
+      expect(res.body.message).toMatch(/Record already exists/);
+    });
+
+    it('recomputes searchTokens when artist changes', async () => {
+      const created = await createRecord({
+        artist: 'Compute Tokens Artist',
+        album: 'Tokens Album',
+      });
+      const res = await request(app.getHttpServer())
+        .put(`/records/${created._id}`)
+        .send({ artist: 'Tokens Modified' })
+        .expect(200);
+      expect(res.body.artist).toBe('Tokens Modified');
+      expect(Array.isArray(res.body.searchTokens)).toBe(true);
+      const tokenString = res.body.searchTokens.join(' ');
+      expect(tokenString).toMatch(/tokens/i);
+    });
+  });
 });

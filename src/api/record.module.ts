@@ -5,6 +5,8 @@ import { RecordService } from './services/record.service';
 import { Record, RecordSchema } from './schemas/record.schema';
 import { RecordMongoRepository } from './repository/record.mongo.repository';
 import { RecordRepositoryPort } from './ports/record.repository.port';
+import { RecordTokenNgramService } from './services/record-token-ngram.service';
+import { RecordTokenServicePort } from './ports/record-token.service.port';
 
 @Module({
   imports: [
@@ -13,6 +15,10 @@ import { RecordRepositoryPort } from './ports/record.repository.port';
   controllers: [RecordController],
   providers: [
     RecordService,
+    {
+      provide: RecordTokenServicePort,
+      useClass: RecordTokenNgramService,
+    },
     {
       provide: RecordRepositoryPort,
       useClass: RecordMongoRepository,

@@ -1,4 +1,5 @@
 import { RecordService } from './record.service';
+import { RecordFormat, RecordCategory } from '../schemas/record.enum';
 import { RecordRepositoryPort } from '../ports/record.repository.port';
 import { SearchRecordQueryDto } from '../dtos/search-record.query.dto';
 import { CursorPaginationQueryDto } from '../common/pagination/dtos/cursor-pagination.query.dto';
@@ -17,6 +18,8 @@ describe('RecordService', () => {
 
   beforeEach(() => {
     repository = {
+      create: jest.fn(),
+      update: jest.fn(),
       findWithCursorPagination: jest.fn(),
       findWithOffsetPagination: jest.fn(),
     };
@@ -111,5 +114,51 @@ describe('RecordService', () => {
     const res = await service.findWithOffsetPagination(search, pagination);
     expect(res.limit).toBe(15);
     expect(res.page).toBe(1);
+  });
+
+  it('delegates create to repository', async () => {
+    const dto = {
+      artist: 'New Artist',
+      album: 'New Album',
+      price: 10,
+      qty: 2,
+      format: RecordFormat.VINYL,
+      category: RecordCategory.ROCK,
+    };
+    const created = { _id: '1', ...dto } as any;
+    repository.create.mockResolvedValue(created);
+    const res = await service.create(dto);
+    expect(res).toBe(created);
+    expect(repository.create).toHaveBeenCalledWith(dto);
+  });
+
+  it('delegates update to repository', async () => {
+    const dto = { price: 99 };
+    const updated = { _id: '1', artist: 'A', album: 'B', price: 99 } as any;
+    repository.update.mockResolvedValue(updated);
+    const res = await service.update('1', dto);
+    expect(res).toBe(updated);
+    expect(repository.update).toHaveBeenCalledWith('1', dto);
+  });
+
+  it('propagates errors from repository (create)', async () => {
+    const err = new Error('duplicate');
+    repository.create.mockRejectedValue(err);
+    await expect(
+      service.create({
+        artist: 'X',
+        album: 'Y',
+        price: 1,
+        qty: 1,
+        format: RecordFormat.VINYL,
+        category: RecordCategory.ROCK,
+      }),
+    ).rejects.toThrow('duplicate');
+  });
+
+  it('propagates errors from repository (update)', async () => {
+    const err = new Error('not found');
+    repository.update.mockRejectedValue(err);
+    await expect(service.update('1', { qty: 1 })).rejects.toThrow('not found');
   });
 });
