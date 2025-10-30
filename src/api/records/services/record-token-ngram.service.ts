@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { generateNgrams } from '../common/utils/generate-ngrams.util';
+import { generateNgrams } from '../../common/utils/generate-ngrams.util';
 import { Record } from '../schemas/record.schema';
 
 @Injectable()

@@ -9,24 +9,24 @@ import { RecordRepositoryPort } from '../ports/record.repository.port';
 import { InjectModel } from '@nestjs/mongoose';
 import { Record } from '../schemas/record.schema';
 import { FilterQuery, Model } from 'mongoose';
-import paginationConfig from '../../configuration/pagination.config';
+import paginationConfig from '../../../configuration/pagination.config';
 import { ConfigType } from '@nestjs/config';
-import { CursorPaginationQueryDto } from '../common/pagination/dtos/cursor-pagination.query.dto';
+import { CursorPaginationQueryDto } from '../../common/pagination/dtos/cursor-pagination.query.dto';
 import {
   CursorPaginationResponseDto,
   buildCursorPaginationResponse,
-} from '../common/pagination/dtos/cursor-pagination.response.dto';
-import { asyncTimer } from '../common/log/utils/async-timer.util';
-import { OffsetPaginationQueryDto } from '../common/pagination/dtos/offset-pagination.query.dto';
+} from '../../common/pagination/dtos/cursor-pagination.response.dto';
+import { asyncTimer } from '../../common/log/utils/async-timer.util';
+import { OffsetPaginationQueryDto } from '../../common/pagination/dtos/offset-pagination.query.dto';
 import {
   OffsetPaginationResponseDto,
   buildOffsetPaginationResponse,
-} from '../common/pagination/dtos/offset-pagination.response.dto';
-import mongodbConfig from '../../configuration/mongodb.config';
-import { ensureLimitWithinBounds } from '../common/pagination/utils/ensure-limit.util';
-import { applyCursorQuery } from '../common/pagination/utils/apply-cursor-query.util';
-import { computeOffset } from '../common/pagination/utils/compute-offset.util';
-import { stringifyMongoQuery } from '../common/log/utils/stringify-mongo-query.util';
+} from '../../common/pagination/dtos/offset-pagination.response.dto';
+import mongodbConfig from '../../../configuration/mongodb.config';
+import { ensureLimitWithinBounds } from '../../common/pagination/utils/ensure-limit.util';
+import { applyCursorQuery } from '../../common/pagination/utils/apply-cursor-query.util';
+import { computeOffset } from '../../common/pagination/utils/compute-offset.util';
+import { stringifyMongoQuery } from '../../common/log/utils/stringify-mongo-query.util';
 import { RecordAlreadyExistsException } from '../exceptions/record.already-exists.exception';
 import { RecordTokenServicePort } from '../ports/record-token.service.port';
 

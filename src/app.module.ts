@@ -6,7 +6,7 @@ import { validationSchema } from './configuration/env.validation';
 import mongodbConfig from './configuration/mongodb.config';
 import paginationConfig from './configuration/pagination.config';
 
-import { RecordModule } from './api/record.module';
+import { RecordModule } from './api/records/record.module';
 import serverConfig from './configuration/server.config';
 
 @Module({

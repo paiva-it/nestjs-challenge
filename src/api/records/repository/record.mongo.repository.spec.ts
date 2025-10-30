@@ -7,8 +7,8 @@ import {
   oid,
   TestRecord,
 } from './__mocks__/mongo-test-helpers';
-import { InvalidCursorException } from '../common/pagination/exceptions/invalid-cursor.exception';
-import { InvalidPageException } from '../common/pagination/exceptions/invalid-page.exception';
+import { InvalidCursorException } from '../../common/pagination/exceptions/invalid-cursor.exception';
+import { InvalidPageException } from '../../common/pagination/exceptions/invalid-page.exception';
 
 type Doc = {
   _id: string;

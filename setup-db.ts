@@ -1,5 +1,5 @@
 import * as mongoose from 'mongoose';
-import { Record, RecordSchema } from './src/api/schemas/record.schema';
+import { Record, RecordSchema } from './src/api/records/schemas/record.schema';
 import * as fs from 'fs';
 import * as readline from 'readline';
 import * as dotenv from 'dotenv';

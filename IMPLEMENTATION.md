@@ -149,3 +149,10 @@
 - Smaller implementation chunks allowed for focused unit tests.
 - Comprehensive test coverage for all new features and edge cases.
 - Utilized mocking and stubbing to isolate unit tests from external dependencies.
+
+# Implement Orders
+
+## Folder Structure
+
+- Moved all current record-related files to `src/api/records`.
+- Created new order-related files in `src/api/orders`.

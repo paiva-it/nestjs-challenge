@@ -1,7 +1,7 @@
 import { FilterQuery } from 'mongoose';
 import { SearchRecordQueryDto } from '../dtos/search-record.query.dto';
 import { Record } from '../schemas/record.schema';
-import { normalizeString } from '../common/utils/normalize-string.util';
+import { normalizeString } from '../../common/utils/normalize-string.util';
 
 export function buildRecordSearchQuery(
   filters: SearchRecordQueryDto,

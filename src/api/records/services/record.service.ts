@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { RecordRepositoryPort } from '../ports/record.repository.port';
 import { SearchRecordQueryDto } from '../dtos/search-record.query.dto';
-import { CursorPaginationQueryDto } from '../common/pagination/dtos/cursor-pagination.query.dto';
-import { CursorPaginationResponseDto } from '../common/pagination/dtos/cursor-pagination.response.dto';
+import { CursorPaginationQueryDto } from '../../common/pagination/dtos/cursor-pagination.query.dto';
+import { CursorPaginationResponseDto } from '../../common/pagination/dtos/cursor-pagination.response.dto';
 import { buildRecordSearchQuery } from '../utils/record.search-query.builder';
 import { Record } from '../schemas/record.schema';
-import { OffsetPaginationQueryDto } from '../common/pagination/dtos/offset-pagination.query.dto';
-import { OffsetPaginationResponseDto } from '../common/pagination/dtos/offset-pagination.response.dto';
+import { OffsetPaginationQueryDto } from '../../common/pagination/dtos/offset-pagination.query.dto';
+import { OffsetPaginationResponseDto } from '../../common/pagination/dtos/offset-pagination.response.dto';
 import { CreateRecordRequestDTO } from '../dtos/create-record.request.dto';
 import { UpdateRecordRequestDTO } from '../dtos/update-record.request.dto';
 

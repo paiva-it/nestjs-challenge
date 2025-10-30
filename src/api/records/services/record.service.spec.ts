@@ -2,11 +2,11 @@ import { RecordService } from './record.service';
 import { RecordFormat, RecordCategory } from '../schemas/record.enum';
 import { RecordRepositoryPort } from '../ports/record.repository.port';
 import { SearchRecordQueryDto } from '../dtos/search-record.query.dto';
-import { CursorPaginationQueryDto } from '../common/pagination/dtos/cursor-pagination.query.dto';
-import { OffsetPaginationQueryDto } from '../common/pagination/dtos/offset-pagination.query.dto';
+import { CursorPaginationQueryDto } from '../../common/pagination/dtos/cursor-pagination.query.dto';
+import { OffsetPaginationQueryDto } from '../../common/pagination/dtos/offset-pagination.query.dto';
 import { buildRecordSearchQuery } from '../utils/record.search-query.builder';
-import { CursorPaginationResponseDto } from '../common/pagination/dtos/cursor-pagination.response.dto';
-import { OffsetPaginationResponseDto } from '../common/pagination/dtos/offset-pagination.response.dto';
+import { CursorPaginationResponseDto } from '../../common/pagination/dtos/cursor-pagination.response.dto';
+import { OffsetPaginationResponseDto } from '../../common/pagination/dtos/offset-pagination.response.dto';
 
 jest.mock('../utils/record.search-query.builder', () => ({
   buildRecordSearchQuery: jest.fn((filters) => ({ mocked: true, filters })),
