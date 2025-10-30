@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { stringifyUnknownError } from './stringify-unkown-error.util';
 
 export async function asyncTimer<T>(
   label: string,
@@ -24,9 +25,7 @@ export async function asyncTimer<T>(
     const duration = Date.now() - start;
 
     logger.error(
-      `${label} failed after ${duration}ms: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
+      `${label} failed after ${duration}ms: ${stringifyUnknownError(err)}`,
     );
 
     throw err;

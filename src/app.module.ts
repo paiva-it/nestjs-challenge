@@ -8,6 +8,7 @@ import paginationConfig from './configuration/pagination.config';
 
 import { RecordModule } from './api/records/record.module';
 import serverConfig from './configuration/server.config';
+import { OrderModule } from './api/orders/order.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import serverConfig from './configuration/server.config';
     }),
 
     RecordModule,
+    OrderModule,
   ],
 })
 export class AppModule {}

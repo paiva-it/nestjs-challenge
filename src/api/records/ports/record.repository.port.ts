@@ -4,12 +4,14 @@ import { CursorPaginationResponseDto } from '../../common/pagination/dtos/cursor
 import { OffsetPaginationResponseDto } from '../../common/pagination/dtos/offset-pagination.response.dto';
 import { CursorPaginationQueryDto } from '../../common/pagination/dtos/cursor-pagination.query.dto';
 import { OffsetPaginationQueryDto } from '../../common/pagination/dtos/offset-pagination.query.dto';
+import { CreateRecordRequestDTO } from '../dtos/create-record.request.dto';
+import { UpdateRecordRequestDTO } from '../dtos/update-record.request.dto';
 
 export const RecordRepositoryPort = Symbol('RecordRepositoryPort');
 
 export interface RecordRepositoryPort {
-  create: (record: Partial<Record>) => Promise<Record>;
-  update: (id: string, update: Partial<Record>) => Promise<Record>;
+  create: (record: CreateRecordRequestDTO) => Promise<Record>;
+  update: (id: string, update: UpdateRecordRequestDTO) => Promise<Record>;
   findWithCursorPagination(
     query: FilterQuery<Record>,
     pagination: CursorPaginationQueryDto,

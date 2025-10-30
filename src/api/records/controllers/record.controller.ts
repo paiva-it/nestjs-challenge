@@ -13,7 +13,9 @@ import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
-  ApiResponse,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { CreateRecordRequestDTO } from '../dtos/create-record.request.dto';
 import { UpdateRecordRequestDTO } from '../dtos/update-record.request.dto';
@@ -31,16 +33,29 @@ export class RecordController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new record' })
-  @ApiResponse({ status: 201, description: 'Record successfully created' })
-  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @ApiCreatedResponse({
+    description: 'Record successfully created',
+    type: Record,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid record data provided',
+  })
   async create(@Body() request: CreateRecordRequestDTO): Promise<Record> {
     return await this.service.create(request);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update an existing record' })
-  @ApiResponse({ status: 200, description: 'Record updated successfully' })
-  @ApiResponse({ status: 500, description: 'Cannot find record to update' })
+  @ApiOkResponse({
+    description: 'Record updated successfully',
+    type: Record,
+  })
+  @ApiNotFoundResponse({
+    description: 'Record not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid record data provided',
+  })
   async update(
     @Param('id') id: string,
     @Body() updateRecordDto: UpdateRecordRequestDTO,
@@ -53,6 +68,9 @@ export class RecordController {
   @ApiOkResponse({
     description: 'Cursor-paginated list of records',
     type: CursorPaginationResponseDto<Record>,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid search parameters',
   })
   async findWithCursorPagination(
     @Query() searchFilters: SearchRecordQueryDto,
@@ -68,6 +86,9 @@ export class RecordController {
   @ApiOkResponse({
     description: 'Offset-paginated list of records',
     type: OffsetPaginationResponseDto<Record>,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid search parameters',
   })
   async findWithOffsetPagination(
     @Query() searchFilters: SearchRecordQueryDto,

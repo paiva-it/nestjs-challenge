@@ -59,7 +59,9 @@ describe('asyncTimer', () => {
       ),
     ).rejects.toThrow('boom');
     expect(logger.errors).toHaveLength(1);
-    expect(logger.errors[0]).toMatch(/failingOp failed after \d+ms: boom/);
+    expect(logger.errors[0]).toMatch(
+      /failingOp failed after \d+ms: Error: boom/,
+    );
   });
 
   it('does not log if below threshold', async () => {

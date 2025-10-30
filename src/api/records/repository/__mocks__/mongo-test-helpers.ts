@@ -1,4 +1,14 @@
 import { FilterQuery } from 'mongoose';
+import { Record as RecordDoc } from '../../schemas/record.schema';
+
+export function buildSession() {
+  return {
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    abortTransaction: jest.fn(),
+    endSession: jest.fn(),
+  };
+}
 
 export type TestRecord = {
   _id: string;
@@ -136,4 +146,76 @@ export function buildMockModel(docs: TestRecord[]): any {
 
 export function oid(i: number): string {
   return i.toString().padStart(24, '0');
+}
+
+export function buildModelForCreate() {
+  const mockDocument = {
+    save: jest.fn(async function () {
+      return this;
+    }),
+  };
+
+  const model = jest.fn((dto) => {
+    return Object.assign(Object.create(mockDocument), dto);
+  }) as any;
+
+  model.create = jest.fn(async (dto) => dto);
+  return model;
+}
+
+export function buildModelForCreateWithError(error: any) {
+  const mockDocument = {
+    save: jest.fn(async function () {
+      throw error;
+    }),
+  };
+  const model = jest.fn((dto) => {
+    return Object.assign(Object.create(mockDocument), dto);
+  }) as any;
+  return model;
+}
+
+export interface BuildModelForUpdateResult {
+  model: any;
+  doc: any;
+  session: any;
+}
+
+export function buildModelForUpdate(
+  initial: Partial<RecordDoc> & { _id: string },
+  modifiedFields: string[],
+): BuildModelForUpdateResult {
+  const doc: any = {
+    ...initial,
+    set: jest.fn((update: Partial<RecordDoc>) => {
+      Object.assign(doc, update);
+    }),
+    modifiedPaths: jest.fn(() => modifiedFields),
+    toObject: jest.fn(() => ({ ...doc })),
+    save: jest.fn(async () => doc),
+    _id: initial._id,
+    searchTokens: initial.searchTokens as string[] | undefined,
+  };
+
+  const session = buildSession();
+  const model = {
+    startSession: jest.fn().mockResolvedValue(session),
+    findById: jest.fn().mockReturnValue({ session: () => doc }),
+  } as any;
+  return { model, doc, session };
+}
+
+export function buildMockTokenService() {
+  return {
+    needsRecompute: (paths: string[]) =>
+      paths.some((p) => ['artist', 'album', 'category', 'format'].includes(p)),
+    generate: jest.fn((doc: object) => {
+      const r = doc as any;
+      const raw = [r.artist, r.album, r.category, r.format]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return raw ? raw.split(/\s+/) : [];
+    }),
+  };
 }

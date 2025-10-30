@@ -2,6 +2,10 @@
 
 - Suggest different folder structure (module-first, then type) — kept original for PR readability and easier diff comparison.
 
+# Future Improvements
+
+- Better API decorators with more specific responses (e.g., 404 on update when not found) for better swagger documentation.
+
 # AI Usage
 
 - ChatGPT for theoretical high-level architecture discussion and validation.
@@ -120,6 +124,7 @@
   - For updates: load the current record, apply changes with `doc.set()`, and recompute tokens only when searchable fields (`artist`, `album`, `category`, `format`) are modified.
   - Use MongoDB transactions to ensure atomicity between record updates and token recomputation.
   - Depend on `RecordTokenServicePort` instead of internal helpers to keep token generation swappable and maintain separation of concerns.
+- Add logging for failure scenarios to aid debugging.
 
 ## Record Token Service
 
@@ -156,3 +161,19 @@
 
 - Moved all current record-related files to `src/api/records`.
 - Created new order-related files in `src/api/orders`.
+
+## Order Schema
+
+- Defined `Order` schema with fields `recordId` and `qty`, simple and extensible.
+
+## Order Repository
+
+- Implemented `OrderMongoRepository` with a `create` method to insert new orders.
+- Decrease record stock atomically before creating an order to ensure consistency.
+- If update failed, fetch record and validate existence / stock.
+- Entire operation wrapped in a MongoDB transaction for atomicity.
+- Add logging for failure scenarios to aid debugging.
+
+## Order Service
+
+- Implemented `createOrder` method that delegates to repository's `create`.

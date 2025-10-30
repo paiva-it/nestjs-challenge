@@ -1,6 +1,6 @@
-import { FilterQuery, Types } from 'mongoose';
+import { Types } from 'mongoose';
 
-export function stringifyMongoQuery(input: FilterQuery<unknown>): string {
+export function stringifyUnkownVariable(input: unknown): string {
   const seen = new WeakSet();
 
   return JSON.stringify(

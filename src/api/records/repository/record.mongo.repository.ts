@@ -26,9 +26,12 @@ import mongodbConfig from '../../../configuration/mongodb.config';
 import { ensureLimitWithinBounds } from '../../common/pagination/utils/ensure-limit.util';
 import { applyCursorQuery } from '../../common/pagination/utils/apply-cursor-query.util';
 import { computeOffset } from '../../common/pagination/utils/compute-offset.util';
-import { stringifyMongoQuery } from '../../common/log/utils/stringify-mongo-query.util';
+import { stringifyUnkownVariable } from '../../common/log/utils/stringify-mongo-query.util';
 import { RecordAlreadyExistsException } from '../exceptions/record.already-exists.exception';
 import { RecordTokenServicePort } from '../ports/record-token.service.port';
+import { stringifyUnknownError } from '../../common/log/utils/stringify-unkown-error.util';
+import { CreateRecordRequestDTO } from '../dtos/create-record.request.dto';
+import { UpdateRecordRequestDTO } from '../dtos/update-record.request.dto';
 
 @Injectable()
 export class RecordMongoRepository implements RecordRepositoryPort {
@@ -38,33 +41,37 @@ export class RecordMongoRepository implements RecordRepositoryPort {
     @InjectModel(Record.name)
     private readonly model: Model<Record>,
 
-    @Inject(paginationConfig.KEY)
-    private readonly pagination: ConfigType<typeof paginationConfig>,
-
     @Inject(mongodbConfig.KEY)
     private readonly mongodb: ConfigType<typeof mongodbConfig>,
+
+    @Inject(paginationConfig.KEY)
+    private readonly pagination: ConfigType<typeof paginationConfig>,
 
     @Inject(RecordTokenServicePort)
     private readonly tokenService: RecordTokenServicePort,
   ) {}
 
-  async create(record: Partial<Record>): Promise<Record> {
+  async create(record: CreateRecordRequestDTO): Promise<Record> {
     try {
       const mutatedDTO = {
         ...record,
         searchTokens: this.tokenService.generate(record),
       };
 
-      return await this.model.create(mutatedDTO);
+      return await new this.model(mutatedDTO).save();
     } catch (err) {
       if (err.code === 11000) {
         throw new RecordAlreadyExistsException(record);
       }
+
+      this.logger.error(
+        `[Record.create] Failed to create record with payload ${stringifyUnkownVariable(record)}: ${stringifyUnknownError(err)}`,
+      );
       throw err;
     }
   }
 
-  async update(id: string, update: Partial<Record>): Promise<Record> {
+  async update(id: string, update: UpdateRecordRequestDTO): Promise<Record> {
     const session = await this.model.startSession();
 
     try {
@@ -89,6 +96,10 @@ export class RecordMongoRepository implements RecordRepositoryPort {
       if (err.code === 11000) {
         throw new RecordAlreadyExistsException(update);
       }
+
+      this.logger.error(
+        `[Record.update] Failed to update record with payload ${stringifyUnkownVariable(update)}: ${stringifyUnknownError(err)}`,
+      );
       throw err;
     } finally {
       await session.endSession();
@@ -104,7 +115,7 @@ export class RecordMongoRepository implements RecordRepositoryPort {
     const filter = applyCursorQuery(query, cursor);
 
     const docs = await asyncTimer(
-      `[Record.findWithCursorPagination] filter=${stringifyMongoQuery(filter)} limit=${limit}`,
+      `[Record.findWithCursorPagination] filter=${stringifyUnkownVariable(filter)} limit=${limit}`,
       this.model
         .find(filter)
         .sort({ _id: 1 })
@@ -130,7 +141,7 @@ export class RecordMongoRepository implements RecordRepositoryPort {
     const { normalizedPage, offset } = computeOffset(page, limit);
 
     const [itemsResult, totalResult] = await asyncTimer(
-      `[Record.findWithOffsetPagination] query=${stringifyMongoQuery(
+      `[Record.findWithOffsetPagination] query=${stringifyUnkownVariable(
         query,
       )} page=${normalizedPage} limit=${limit}`,
       Promise.allSettled([
