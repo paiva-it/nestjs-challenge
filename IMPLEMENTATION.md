@@ -373,3 +373,8 @@ src/
 - Isolate MusicBrainz-specific logic in its own adapter for easier testing and future replacement.
 - Create the port as API-agnostic, receiving the entire object for flexibility.
 - The service implementation handles the specifics of calling MusicBrainz and using the `mbid` field and parsing the response.
+
+## Future considerations
+
+- Caching MB responses to reduce latency and external calls.
+- More comprehensive error handling for various failure scenarios (network issues, invalid MBIDs, parsing errors).

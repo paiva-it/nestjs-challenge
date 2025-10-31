@@ -33,4 +33,11 @@ export const validationSchema = Joi.object({
     .max(Joi.ref('PAGINATION_MAX_LIMIT'))
     .empty('')
     .default(20),
+
+  EXTERNAL_DEFAULT_TIMEOUT: Joi.number()
+    .integer()
+    .positive()
+    .empty('')
+    .default(5000),
+  EXTERNAL_USER_AGENT: Joi.string().default('BrokenRecordStore/1.0'),
 });

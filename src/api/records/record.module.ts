@@ -12,6 +12,8 @@ import { RecordRepositoryPort } from './domain/ports/record.repository.port';
 import { RecordMongoRepository } from './infrastructure/repository/mongodb/record.mongo.repository';
 import { MongoTxModule } from '@api/core/tx/mongo-tx.module';
 import { RecordServicePort } from './domain/ports/record.service.port';
+import { RecordTracklistServicePort } from './domain/ports/record-tracklist.service.port';
+import { MusicBrainzXMLServiceAdapter } from './infrastructure/adapters/musicbrainz-xml.service.adapter';
 
 @Module({
   imports: [
@@ -22,6 +24,10 @@ import { RecordServicePort } from './domain/ports/record.service.port';
   ],
   controllers: [RecordController],
   providers: [
+    {
+      provide: RecordTracklistServicePort,
+      useClass: MusicBrainzXMLServiceAdapter,
+    },
     {
       provide: RecordServicePort,
       useClass: RecordService,

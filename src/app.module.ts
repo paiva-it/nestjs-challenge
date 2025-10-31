@@ -8,6 +8,7 @@ import mongodbConfig from './configuration/mongodb.config';
 import paginationConfig from './configuration/pagination.config';
 
 import serverConfig from './configuration/server.config';
+import externalConfig from './configuration/external.config';
 import { RecordModule } from '@api/records/record.module';
 import { OrderModule } from '@api/orders/order.module';
 
@@ -15,7 +16,7 @@ import { OrderModule } from '@api/orders/order.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [serverConfig, mongodbConfig, paginationConfig],
+      load: [serverConfig, mongodbConfig, paginationConfig, externalConfig],
       validationSchema,
       validationOptions: {
         abortEarly: false,
