@@ -141,8 +141,8 @@
 ## Service
 
 - For now, without MBID integration:
-  - Implement `createRecord` method that delegates to repository's `create`.
-  - Implement `updateRecord` method that delegates to repository's `update`.
+  - Implement `create` method that delegates to repository's `create`.
+  - Implement `update` method that delegates to repository's `update`.
 
 ## Controller
 
@@ -176,4 +176,200 @@
 
 ## Order Service
 
-- Implemented `createOrder` method that delegates to repository's `create`.
+- Implemented `create` method that delegates to repository's `create`.
+
+## Order Controller
+
+- Implemented POST `/orders` endpoint to create a new order.
+- Validates input and returns created order.
+
+# Rafactor Order / Record repo relationship and use @nestjs/transactional for all transactions
+
+## Research
+
+- Investigated available NestJS packages for transaction management.
+- Chose `@nestjs-cls/transactional` for its CLS-based context management.
+- Looked at industry standards and best practices for transaction handling in Node.js with Mongoose.
+- Prepared for a multiple Database setup in the future by decoupling transaction management from direct Mongoose session handling.
+- Reviewed codebase and noticed services are not fully DB-agnostic due to model usage and mongoose utils.
+- Redesigned controller, service, domain, and repository layers to use ports for better abstraction.
+
+## Key Changes
+
+- Refactored folder structure to separate concerns clearly and follow DDD principles.
+
+```
+src/
+├── main.ts
+├── app.module.ts
+│
+├── configuration/                      # Environment + infra configs (env, db, server, etc.)
+│
+└── api/
+    ├── core/                           # Shared / cross-cutting modules (common)
+    │   ├── log/                        # generic log utils
+    │   ├── guards/                     # shared guards
+    │   ├── pagination/                 # shared pagination logic
+    │   │   ├── dtos/
+    │   │   ├── exceptions/
+    │   │   └── utils/
+    │   ├── repository/                 # generic repository utils
+    │   ├── tx/                         # transactions / CLS / decorators
+    │   └── utils/                      # generic utils
+    │
+    └── <feature>/                      # e.g. records, orders, users, etc.
+        ├── application/                # use cases, services, exceptions, ...
+        │   ├── dtos/
+        │   ├── exceptions/
+        │   └── services/
+        │
+        ├── domain/                     # business models and interfaces
+        │   ├── entities/
+        │   ├── ports/
+        │   └── services/
+        │
+        ├── infrastructure/             # database, external APIs, adapters
+        │   └── adapters/               # external integrations
+        │   └── repository/
+        │       └── <technology>/       # e.g. mongoose/mongo, postgres, redis, memory, etc.
+        │         ├── schemas/
+        │         └── mappers/
+        │
+        ├── interface/                  # entrypoints (controllers, guards, presenters (DTOs), ...)
+        │
+        └── <feature>.module.ts       # Nest module wiring the feature
+```
+
+## Transactional Module Implementation
+
+- Created a `TransactionManager` port to abstract transaction operations, serving `runInTransaction` and `getContext` methods.
+- Created a MongoTxManager implementation using mongoose connection and CLS service, upgraded with a logger.
+- Created a `TransactionalInterceptor` to wrap service methods in transactions automatically.
+- Applied `@Transactional()` decorator to service methods that require transactions.
+- Export a `MongoTransactionalModule` to encapsulate transaction-related providers for easy reuse in different modules.
+
+## Schemas, Entities and Mappers
+
+- Created `RecordEntity` and `OrderEntity` in the domain layer to represent business models.
+- Created Mongoose schemas in the infrastructure layer to represent database models.
+- Created mappers to convert from documents to entities for both records and orders.
+
+## Repositories
+
+- Created `RecordRepositoryPort` and `OrderRepositoryPort` in the domain layer to define repository interfaces.
+- Implemented `RecordMongoRepository` and `OrderMongoRepository` in the infrastructure layer to handle database operations.
+- Repositories now are transaction-agnostic, relying on the @Transactional decorator at the service layer.
+
+## Services
+
+- Created `RecordService` and `OrderService` in the application layer to handle business logic.
+- Services now handle transactions using the `@Transactional()` decorator.
+- `OrderService` interacts with `RecordService` to manage stock during order creation.
+
+## Controllers
+
+- Created `RecordController` and `OrderController` in the interface layer to handle HTTP requests.
+- Controllers now have the associate services injected via ports.
+
+## Testing
+
+- Dropped most tests as they were tightly coupled to Mongoose and the previous structure.
+- Prepared the repo for new unit tests on a future implementation, more decoupled and easier to mock.
+
+# Extend API to use MBIDs for Records
+
+## Record Schema
+
+- Added tracklist field to Record schema to store array of track names.
+
+## Configuration
+
+- Added "external" configuration namespace for external service settings.
+- Configured default timeout for external service calls.
+
+## Port and Service
+
+- Created `RecordTracklistServicePort` to abstract MB integration.
+- Implemented `MusicBrainzXMLServiceAdapter` to fetch record details from MusicBrainz API using XML.
+- Keep all the MusicBrainz-related logic isolated in its own service for easier testing and future replacement.
+- Use fast-xml-parser to parse XML responses into JS objects.
+
+## Reference MBID response structure XML
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xmlns="http://musicbrainz.org/ns/mmd-2.0#">
+  <release id="bdb24cb5-404b-4f60-bba4-7b730325ae47">
+    <title>Pieds nus sur la braise</title>
+    <status id="4e304316-386d-3409-af2e-78857eec5cfe">Official</status>
+    <quality>high</quality>
+    <packaging id="8f931351-d2e2-310f-afc6-37b89ddba246">Digipak</packaging>
+    <text-representation>
+      <language>fra</language>
+      <script>Latn</script>
+    </text-representation>
+    <date>2006-05</date>
+    <country>FR</country>
+    <release-event-list count="1">
+      <release-event>
+        <date>2006-05</date>
+        <area id="08310658-51eb-3801-80de-5a0739207115">
+          <name>France</name>
+          <sort-name>France</sort-name>
+          <iso-3166-1-code-list>
+            <iso-3166-1-code>FR</iso-3166-1-code>
+          </iso-3166-1-code-list>
+        </area>
+      </release-event>
+    </release-event-list>
+    <barcode>828768226629</barcode>
+    <asin>B000F5FQ0O</asin>
+    <cover-art-archive>
+      <artwork>true</artwork>
+      <count>21</count>
+      <front>true</front>
+      <back>true</back>
+    </cover-art-archive>
+    <medium-list count="1">
+      <medium id="0fad4903-b8cf-3cf1-b462-0a1a914084e3">
+        <position>1</position>
+        <format id="9712d52a-4509-3d4b-a1a2-67c88c643e31">CD</format>
+        <track-list count="13" offset="0">
+          <track id="74fab6d0-7084-34e6-9fff-071a40076f2b">
+            <position>1</position>
+            <number>1</number>
+            <length>158400</length>
+            <recording id="70493038-55be-4258-a4bf-cd8f2504f432">
+              <title>Pavillons kamikazes</title>
+              <length>158000</length>
+              <disambiguation>album version</disambiguation>
+              <first-release-date>2006-05</first-release-date>
+            </recording>
+          </track>
+          ...
+        </track-list>
+      </medium>
+    </medium-list>
+  </release>
+</metadata>
+```
+
+- We are looking to access metadata.release.mediumList.medium.trackList.track.recording.title for each track.
+
+## DTO
+
+- Created `MusicBrainzReleaseResponseDto` that validates and types the relevant parts of the MB response.
+- Focused on the nested structure to extract track titles safely.
+
+## Service Usage
+
+- Updated `RecordService` to accept a `tracklistService` port.
+- In `create` method, fetch tracklist from service and include in new record.
+- In `update` method, if tracklistService indicates the need to refetch, fetch updated tracklist from service and update record.
+
+## Philosophy
+
+- Decouple external service integration from core business logic using ports and adapters.
+- Isolate MusicBrainz-specific logic in its own adapter for easier testing and future replacement.
+- Create the port as API-agnostic, receiving the entire object for flexibility.
+- The service implementation handles the specifics of calling MusicBrainz and using the `mbid` field and parsing the response.

@@ -15,6 +15,7 @@ export const validationSchema = Joi.object({
   MONGO_QUERY_WARNING_THRESHOLD_MS: Joi.number()
     .integer()
     .positive()
+    .empty('')
     .default(100),
 
   HOST: Joi.string().hostname().default('0.0.0.0'),

@@ -1,18 +1,31 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Order, OrderSchema } from './schemas/order.schema';
-import { OrderController } from './controllers/order.controller';
-import { OrderService } from './services/order.service';
-import { OrderRepositoryPort } from './port/order.repository.port';
-import { OrderMongoRepository } from './repository/order.mongo.repository';
+import {
+  OrderMongoDocument,
+  OrderMongoSchema,
+} from './infrastructure/repository/mongodb/schemas/order.mongo.schema';
+import { MongoTxModule } from '@api/core/tx/mongo-tx.module';
+import { OrderController } from './interface/order.controller';
+import { OrderService } from './application/services/order.service';
+import { OrderRepositoryPort } from './domain/ports/order.repository.port';
+import { OrderMongoRepository } from './infrastructure/repository/mongodb/order.mongo.repository';
+import { RecordModule } from '@api/records/record.module';
+import { OrderServicePort } from './domain/ports/order.service.port';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
+    MongooseModule.forFeature([
+      { name: OrderMongoDocument.name, schema: OrderMongoSchema },
+    ]),
+    MongoTxModule,
+    RecordModule,
   ],
   controllers: [OrderController],
   providers: [
-    OrderService,
+    {
+      provide: OrderServicePort,
+      useClass: OrderService,
+    },
     {
       provide: OrderRepositoryPort,
       useClass: OrderMongoRepository,

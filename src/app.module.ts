@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ClsModule } from 'nestjs-cls';
 
 import { validationSchema } from './configuration/env.validation';
 import mongodbConfig from './configuration/mongodb.config';
 import paginationConfig from './configuration/pagination.config';
 
-import { RecordModule } from './api/records/record.module';
 import serverConfig from './configuration/server.config';
-import { OrderModule } from './api/orders/order.module';
+import { RecordModule } from '@api/records/record.module';
+import { OrderModule } from '@api/orders/order.module';
 
 @Module({
   imports: [
@@ -26,6 +27,10 @@ import { OrderModule } from './api/orders/order.module';
         uri: config.get<string>('mongodb.uri', { infer: true }),
       }),
       inject: [ConfigService],
+    }),
+
+    ClsModule.forRoot({
+      global: true,
     }),
 
     RecordModule,

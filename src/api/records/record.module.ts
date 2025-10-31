@@ -1,20 +1,31 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { RecordController } from './controllers/record.controller';
-import { RecordService } from './services/record.service';
-import { Record, RecordSchema } from './schemas/record.schema';
-import { RecordMongoRepository } from './repository/record.mongo.repository';
-import { RecordRepositoryPort } from './ports/record.repository.port';
-import { RecordTokenNgramService } from './services/record-token-ngram.service';
-import { RecordTokenServicePort } from './ports/record-token.service.port';
+import { RecordController } from './interface/record.controller';
+import {
+  RecordMongoDocument,
+  RecordMongoSchema,
+} from './infrastructure/repository/mongodb/schemas/record.mongo.schema';
+import { RecordService } from './application/services/record.service';
+import { RecordTokenServicePort } from './domain/ports/record-token.service.port';
+import { RecordTokenNgramService } from './domain/services/record-token-ngram.service';
+import { RecordRepositoryPort } from './domain/ports/record.repository.port';
+import { RecordMongoRepository } from './infrastructure/repository/mongodb/record.mongo.repository';
+import { MongoTxModule } from '@api/core/tx/mongo-tx.module';
+import { RecordServicePort } from './domain/ports/record.service.port';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Record.name, schema: RecordSchema }]),
+    MongooseModule.forFeature([
+      { name: RecordMongoDocument.name, schema: RecordMongoSchema },
+    ]),
+    MongoTxModule,
   ],
   controllers: [RecordController],
   providers: [
-    RecordService,
+    {
+      provide: RecordServicePort,
+      useClass: RecordService,
+    },
     {
       provide: RecordTokenServicePort,
       useClass: RecordTokenNgramService,
@@ -24,5 +35,6 @@ import { RecordTokenServicePort } from './ports/record-token.service.port';
       useClass: RecordMongoRepository,
     },
   ],
+  exports: [RecordServicePort],
 })
 export class RecordModule {}

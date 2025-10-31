@@ -1,13 +1,16 @@
 import * as mongoose from 'mongoose';
-import { Record, RecordSchema } from './src/api/records/schemas/record.schema';
-import * as fs from 'fs';
+import {
+  RecordMongoDocument,
+  RecordMongoSchema,
+} from './src/api/records/infrastructure/repository/mongodb/schemas/record.mongo.schema';
 import * as readline from 'readline';
 import * as dotenv from 'dotenv';
-import { generateNgrams } from './src/api/common/utils/generate-ngrams.util';
+import { generateNgrams } from './src/api/core/utils/generate-ngrams.util';
+import * as fs from 'fs';
 
 dotenv.config();
 
-function computeSearchTokens(doc: Partial<Record>): string[] {
+function computeSearchTokens(doc: Partial<RecordMongoDocument>): string[] {
   const tokens: string[] = [];
 
   if (doc.artist) tokens.push(...generateNgrams(doc.artist));
@@ -31,10 +34,8 @@ async function setupDatabase() {
         rl.close();
 
         const data = JSON.parse(fs.readFileSync('data.json', 'utf-8'));
-        const recordModel: mongoose.Model<Record> = mongoose.model<Record>(
-          'Record',
-          RecordSchema,
-        );
+        const recordModel: mongoose.Model<RecordMongoDocument> =
+          mongoose.model<RecordMongoDocument>('Record', RecordMongoSchema);
 
         const mongoUrl = process.env.MONGO_URL;
         if (!mongoUrl) {
@@ -51,10 +52,12 @@ async function setupDatabase() {
           console.log('Existing collection cleaned up.');
         }
 
-        const dataWithTokens = data.map((doc: Partial<Record>) => ({
-          ...doc,
-          searchTokens: computeSearchTokens(doc),
-        }));
+        const dataWithTokens = data.map(
+          (doc: Partial<RecordMongoDocument>) => ({
+            ...doc,
+            searchTokens: computeSearchTokens(doc),
+          }),
+        );
 
         const records = await recordModel.insertMany(dataWithTokens);
         console.log(`Inserted ${records.length} records successfully!`);
