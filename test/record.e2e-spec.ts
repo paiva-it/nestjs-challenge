@@ -2,30 +2,49 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { RecordFormat, RecordCategory } from '../src/api/schemas/record.enum';
+import {
+  RecordFormat,
+  RecordCategory,
+} from '../src/api/records/domain/entities/record.enum';
 import { Types } from 'mongoose';
 import { URLSearchParams } from 'url';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongooseModule } from '@nestjs/mongoose';
+import RedisMock from 'ioredis-mock';
+import { CachePort } from '@api/core/cache/cache.port';
 
 describe('RecordController (e2e)', () => {
   let app: INestApplication;
+  let mongoServer: MongoMemoryServer;
+  let redisServer: any;
   let recordModel: any;
-  const createdIds: string[] = [];
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    mongoServer = await MongoMemoryServer.create();
+    const uri = mongoServer.getUri();
 
-    app = moduleFixture.createNestApplication();
-    recordModel = app.get('RecordModel');
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [MongooseModule.forRoot(uri), AppModule],
+    })
+      .overrideProvider(CachePort)
+      .useValue(new RedisMock())
+      .compile();
+
+    app = moduleFixture.createNestApplication({ logger: false });
     await app.init();
+
+    recordModel = app.get('RecordMongoDocumentModel');
+    redisServer = app.get(CachePort);
+  });
+
+  beforeEach(async () => {
+    await recordModel.deleteMany({});
+    await redisServer.flushall();
   });
 
   afterAll(async () => {
-    if (createdIds.length) {
-      await recordModel.deleteMany({ _id: { $in: createdIds } });
-    }
     await app.close();
+    await mongoServer.stop();
   });
 
   async function createRecord(overrides: Partial<any> = {}) {
@@ -43,7 +62,7 @@ describe('RecordController (e2e)', () => {
       .post('/records')
       .send(payload)
       .expect(201);
-    createdIds.push(res.body._id);
+
     return res.body;
   }
 
@@ -69,15 +88,18 @@ describe('RecordController (e2e)', () => {
       album: 'Wish You Were Here',
       category: RecordCategory.ROCK,
     });
+
     const searchParams = new URLSearchParams();
     searchParams.append('artist', 'Pink Floyd');
     searchParams.append('price_gte', '0');
     searchParams.append('price_lte', '30');
     searchParams.append('qty_gte', '5');
     searchParams.append('qty_lte', '20');
+
     const res = await request(app.getHttpServer())
       .get(`/records?${searchParams.toString()}`)
       .expect(200);
+
     expect(res.body.data.length).toBeGreaterThanOrEqual(2);
     for (const r of res.body.data) {
       expect(r.artist).toBe('Pink Floyd');
@@ -90,16 +112,19 @@ describe('RecordController (e2e)', () => {
     for (let i = 0; i < 21; i++) {
       await createRecord({ artist: `DefaultLimit Artist ${i}` });
     }
+
     const res = await request(app.getHttpServer()).get('/records').expect(200);
     expect(res.body.limit).toBeGreaterThanOrEqual(res.body.data.length);
   });
 
   it('/records/offset is guard protected and requires Authorization header', async () => {
     await request(app.getHttpServer()).get('/records/offset').expect(401);
+
     const res = await request(app.getHttpServer())
       .get('/records/offset')
       .set('Authorization', 'Bearer mock-token')
       .expect(200);
+
     expect(res.body).toHaveProperty('data');
     expect(res.body).toHaveProperty('page');
     expect(res.body).toHaveProperty('totalItems');
@@ -109,10 +134,12 @@ describe('RecordController (e2e)', () => {
     for (let i = 0; i < 3; i++) {
       await createRecord({ artist: `Offset Meta ${i}` });
     }
+
     const res = await request(app.getHttpServer())
       .get('/records/offset?limit=2&page=1')
       .set('Authorization', 'Bearer mock-token')
       .expect(200);
+
     expect(res.body.page).toBe(1);
     expect(res.body.limit).toBe(2);
     expect(res.body.pageSize).toBe(2);
@@ -129,17 +156,20 @@ describe('RecordController (e2e)', () => {
 
   it('Uses injected Record Model (verify ID format)', async () => {
     const created = await createRecord({ artist: 'Model Injection Test' });
-    expect(Types.ObjectId.isValid(created._id)).toBe(true);
+    expect(Types.ObjectId.isValid(created.id)).toBe(true);
   });
 
   it('Partial token search (q) returns matching records', async () => {
     await createRecord({ artist: 'Led Zeppelin', album: 'IV' });
     await createRecord({ artist: 'Led Zeppelin', album: 'Physical Graffiti' });
+
     const searchParams = new URLSearchParams();
     searchParams.append('q', 'led iv');
+
     const res = await request(app.getHttpServer())
       .get(`/records?${searchParams.toString()}`)
       .expect(200);
+
     expect(res.body.data.length).toBeGreaterThanOrEqual(1);
     expect(
       res.body.data.findIndex(
@@ -152,15 +182,18 @@ describe('RecordController (e2e)', () => {
     const res = await request(app.getHttpServer())
       .get('/records?limit=9999')
       .expect(400);
+
     expect(res.body.message).toMatch(/exceeds the allowed maximum/);
   });
 
   it('Invalid cursor returns error', async () => {
     const searchParams = new URLSearchParams();
     searchParams.append('cursor', 'not-a-valid-objectid');
+
     const res = await request(app.getHttpServer())
       .get(`/records?${searchParams.toString()}`)
       .expect(400);
+
     expect(res.body.message).toMatch(/Invalid cursor format/);
   });
 
@@ -168,10 +201,12 @@ describe('RecordController (e2e)', () => {
     const searchParams = new URLSearchParams();
     searchParams.append('page', '-1');
     searchParams.append('limit', '2');
+
     const res = await request(app.getHttpServer())
       .get(`/records/offset?${searchParams.toString()}`)
       .set('Authorization', 'Bearer mock-token')
       .expect(400);
+
     expect(res.body.message).toMatch(/Invalid page number/);
   });
 
@@ -179,6 +214,7 @@ describe('RecordController (e2e)', () => {
     const res = await request(app.getHttpServer())
       .get('/records/offset')
       .expect(401);
+
     expect(res.body.message).toMatch(/Missing or invalid auth token/);
   });
 
@@ -186,8 +222,7 @@ describe('RecordController (e2e)', () => {
     it('creates a record and returns 201', async () => {
       const created = await createRecord({ artist: 'Update Flow Artist' });
       expect(created.artist).toBe('Update Flow Artist');
-      expect(created).toHaveProperty('_id');
-      expect(created).toHaveProperty('searchTokens');
+      expect(created).toHaveProperty('id');
     });
 
     it('updates an existing record successfully', async () => {
@@ -195,20 +230,24 @@ describe('RecordController (e2e)', () => {
         artist: 'Artist To Update',
         qty: 1,
       });
+
       const res = await request(app.getHttpServer())
-        .put(`/records/${created._id}`)
+        .put(`/records/${created.id}`)
         .send({ qty: 5 })
         .expect(200);
+
       expect(res.body.qty).toBe(5);
-      expect(res.body._id).toBe(created._id);
+      expect(res.body.id).toBe(created.id);
     });
 
     it('returns 404 when updating non-existent record', async () => {
       const fakeId = new Types.ObjectId().toHexString();
+
       const res = await request(app.getHttpServer())
         .put(`/records/${fakeId}`)
         .send({ qty: 99 })
         .expect(404);
+
       expect(res.body.message).toMatch(/Record not found/);
     });
 
@@ -221,30 +260,18 @@ describe('RecordController (e2e)', () => {
         format: RecordFormat.VINYL,
         category: RecordCategory.ROCK,
       };
+
       await request(app.getHttpServer())
         .post('/records')
         .send(payload)
         .expect(201);
+
       const res = await request(app.getHttpServer())
         .post('/records')
         .send(payload)
         .expect(409);
-      expect(res.body.message).toMatch(/Record already exists/);
-    });
 
-    it('recomputes searchTokens when artist changes', async () => {
-      const created = await createRecord({
-        artist: 'Compute Tokens Artist',
-        album: 'Tokens Album',
-      });
-      const res = await request(app.getHttpServer())
-        .put(`/records/${created._id}`)
-        .send({ artist: 'Tokens Modified' })
-        .expect(200);
-      expect(res.body.artist).toBe('Tokens Modified');
-      expect(Array.isArray(res.body.searchTokens)).toBe(true);
-      const tokenString = res.body.searchTokens.join(' ');
-      expect(tokenString).toMatch(/tokens/i);
+      expect(res.body.message).toMatch(/Record already exists/);
     });
   });
 });

@@ -1,16 +1,14 @@
 {
-  "moduleFileExtensions": [
-    "js",
-    "json",
-    "ts"
-  ],
-  "rootDir": ".",
-  "testEnvironment": "node",
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
   "testRegex": ".e2e-spec.ts$",
+  "testEnvironment": "node",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "testPathIgnorePatterns": [
-    "/node_modules/"
-  ]
+  "moduleNameMapper": {
+    "^@api/(.*)$": "<rootDir>/src/api/$1",
+    "^@configuration/(.*)$": "<rootDir>/src/configuration/$1",
+    "^@test/(.*)$": "<rootDir>/test/$1"
+  }
 }

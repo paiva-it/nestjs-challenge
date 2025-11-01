@@ -1,5 +1,7 @@
 import { RecordMongoRepository } from './record.mongo.repository';
 import { Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InvalidObjectIdException } from '@api/core/repository/exceptions/invalid-objectid.exception';
+import { Types } from 'mongoose';
 import { RecordMongoMapper } from './mappers/record.mongo.mapper';
 import { createMongooseModelMock } from '@test/__mocks__/db/mongoose.model.mock';
 import { createTokenServiceMock } from '@test/__mocks__/external/token.service.mock';
@@ -131,12 +133,13 @@ describe('RecordMongoRepository', () => {
   it('updates record and maps', async () => {
     const created = new Date();
     const lastModified = new Date();
+    const validId = new Types.ObjectId().toHexString();
     const found: any = {
       set: jest.fn(),
       modifiedPaths: jest.fn().mockReturnValue([]),
       toObject: jest.fn().mockReturnValue({}),
       save: jest.fn().mockResolvedValue({
-        _id: 'id123',
+        _id: validId,
         artist: 'Artist',
         album: 'Album',
         price: 10,
@@ -153,7 +156,7 @@ describe('RecordMongoRepository', () => {
     const mapperSpy = jest
       .spyOn(RecordMongoMapper.prototype, 'toEntity')
       .mockReturnValue({
-        id: 'id123',
+        id: validId,
         artist: 'Artist',
         album: 'Album',
         price: 10,
@@ -164,12 +167,11 @@ describe('RecordMongoRepository', () => {
         created: new Date(),
         lastModified: new Date(),
       });
-
-    const result = await repository.update('id123', { qty: 5 });
+    const result = await repository.update(validId, { qty: 5 });
 
     expect(found.set).toHaveBeenCalledWith({ qty: 5 });
     expect(result).toEqual({
-      id: 'id123',
+      id: validId,
       artist: 'Artist',
       album: 'Album',
       price: 10,
@@ -185,9 +187,15 @@ describe('RecordMongoRepository', () => {
 
   it('throws NotFoundException if update target missing', async () => {
     model.findById.mockResolvedValue(null);
-
-    await expect(repository.update('id123', {})).rejects.toThrow(
+    const validId = new Types.ObjectId().toHexString();
+    await expect(repository.update(validId, {})).rejects.toThrow(
       NotFoundException,
+    );
+  });
+
+  it('throws InvalidObjectIdException on update with malformed id', async () => {
+    await expect(repository.update('not-an-objectid', {})).rejects.toThrow(
+      InvalidObjectIdException,
     );
   });
 
@@ -195,7 +203,8 @@ describe('RecordMongoRepository', () => {
   // FIND BY ID
   // ----------------------------------
   it('findById returns mapped entity', async () => {
-    const doc = { _id: 'id123', qty: 1 };
+    const validId = new Types.ObjectId().toHexString();
+    const doc = { _id: validId, qty: 1 };
 
     model.findById.mockReturnValue({
       lean: () => ({ exec: async () => doc }),
@@ -204,7 +213,7 @@ describe('RecordMongoRepository', () => {
     const mapperSpy = jest
       .spyOn(RecordMongoMapper.prototype, 'toEntity')
       .mockReturnValue({
-        id: 'id123',
+        id: validId,
         artist: 'Artist',
         album: 'Album',
         price: 10,
@@ -215,11 +224,10 @@ describe('RecordMongoRepository', () => {
         created: new Date(),
         lastModified: new Date(),
       });
-
-    const result = await repository.findById('id123');
+    const result = await repository.findById(validId);
 
     expect(result).toEqual({
-      id: 'id123',
+      id: validId,
       artist: 'Artist',
       album: 'Album',
       price: 10,
@@ -237,9 +245,15 @@ describe('RecordMongoRepository', () => {
     model.findById.mockReturnValue({
       lean: () => ({ exec: async () => null }),
     });
-
-    await expect(repository.findById('nope')).rejects.toThrow(
+    const validId = new Types.ObjectId().toHexString();
+    await expect(repository.findById(validId)).rejects.toThrow(
       NotFoundException,
+    );
+  });
+
+  it('throws InvalidObjectIdException on findById malformed id', async () => {
+    await expect(repository.findById('bad-id')).rejects.toThrow(
+      InvalidObjectIdException,
     );
   });
 
@@ -247,7 +261,8 @@ describe('RecordMongoRepository', () => {
   // DECREASE QUANTITY
   // ----------------------------------
   it('throws BadRequestException on invalid qty', async () => {
-    await expect(repository.decreaseQuantity('id', 0)).rejects.toThrow(
+    const validId = new Types.ObjectId().toHexString();
+    await expect(repository.decreaseQuantity(validId, 0)).rejects.toThrow(
       BadRequestException,
     );
   });
@@ -255,15 +270,21 @@ describe('RecordMongoRepository', () => {
   it('throws NotFoundException if doc missing for decrease', async () => {
     model.findOneAndUpdate.mockResolvedValue(null);
     model.findById.mockResolvedValue(null);
-
-    await expect(repository.decreaseQuantity('id', 1)).rejects.toThrow(
+    const validId = new Types.ObjectId().toHexString();
+    await expect(repository.decreaseQuantity(validId, 1)).rejects.toThrow(
       NotFoundException,
+    );
+  });
+
+  it('throws InvalidObjectIdException on decreaseQuantity malformed id', async () => {
+    await expect(repository.decreaseQuantity('oops', 1)).rejects.toThrow(
+      InvalidObjectIdException,
     );
   });
 
   it('maps updated doc on decreaseQuantity success', async () => {
     const fakeDoc = {
-      _id: 'id123',
+      _id: new Types.ObjectId().toHexString(),
       artist: 'Artist',
       album: 'Album',
       price: 10,
@@ -280,7 +301,7 @@ describe('RecordMongoRepository', () => {
     const mapperSpy = jest
       .spyOn(RecordMongoMapper.prototype, 'toEntity')
       .mockReturnValue({
-        id: 'id123',
+        id: fakeDoc._id,
         artist: 'Artist',
         album: 'Album',
         price: 10,
@@ -291,12 +312,11 @@ describe('RecordMongoRepository', () => {
         created: fakeDoc.created,
         lastModified: fakeDoc.lastModified,
       });
-
-    const result = await repository.decreaseQuantity('id123', 1);
+    const result = await repository.decreaseQuantity(fakeDoc._id, 1);
 
     expect(mapperSpy).toHaveBeenCalledWith(fakeDoc);
     expect(result).toEqual({
-      id: 'id123',
+      id: fakeDoc._id,
       artist: 'Artist',
       album: 'Album',
       price: 10,

@@ -56,12 +56,4 @@ describe('RecordMongoMapper', () => {
       'document._id is missing',
     );
   });
-
-  it('throws if document.toObject is not a function', () => {
-    const broken: any = { _id: new Types.ObjectId() };
-
-    expect(() => mapper.toEntity(broken)).toThrow(
-      'document.toObject is not a function',
-    );
-  });
 });

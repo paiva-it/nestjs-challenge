@@ -8,9 +8,12 @@ export class RecordMongoMapper {
   private readonly base = new MongoMapper<RecordMongoDocument, RecordEntity>();
 
   public toEntity(document: RecordMongoDocument): RecordEntity {
+    const baseEntity = this.base.toEntity(document);
     //eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { searchTokens, ...rest } = this.base.toEntity(document);
+    const { searchTokens, ...rest } = baseEntity;
 
-    return rest;
+    return {
+      ...rest,
+    };
   }
 }

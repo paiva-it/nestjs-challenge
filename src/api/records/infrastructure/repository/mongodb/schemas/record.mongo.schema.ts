@@ -7,6 +7,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
 @Schema({
+  collection: 'records',
   timestamps: {
     createdAt: 'created',
     updatedAt: 'lastModified',

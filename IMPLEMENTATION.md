@@ -1,10 +1,6 @@
-# General Notes
-
-- Suggest different folder structure (module-first, then type) — kept original for PR readability and easier diff comparison.
-
 # Future Improvements
 
-- Better API decorators with more specific responses (e.g., 404 on update when not found) for better swagger documentation.
+- Better API decorators in controllers with more specific responses (e.g., 404 on update when not found) for better swagger documentation.
 
 # AI Usage
 
@@ -445,3 +441,10 @@ src/
 - Created a central `test/__mocks__` folder for reusable mock implementations.
 - Organized mocks by concern (`db`, `cache`, `external`, `framework`, `domain`).
 - Introduced domain port mocks (repository/service adapters) to exercise higher-level service and controller logic without binding tests to Mongoose or external APIs.
+
+## Additional End-to-End Coverage
+
+- Use mongodb-memory-server for isolated, in-memory MongoDB instances during e2e tests.
+- Use ioredis-mock for in-memory Redis instances during e2e tests.
+- Extended record e2e suite to validate stock decrement via order creation.
+- Added dedicated order e2e tests (creation success, non-existent record 404, invalid quantity 400) to verify transactional stock handling.

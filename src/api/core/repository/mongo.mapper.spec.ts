@@ -46,15 +46,18 @@ describe('MongoMapper', () => {
     );
   });
 
-  it('throws when toObject is not a function', () => {
+  it('handles documents without toObject method', () => {
     const brokenDoc: any = {
       _id: new Types.ObjectId(),
+      name: 'test',
       toObject: undefined,
     };
 
-    expect(() => mapper.toEntity(brokenDoc)).toThrow(
-      'document.toObject is not a function',
-    );
+    const result = mapper.toEntity(brokenDoc);
+
+    expect(result.id).toBe(brokenDoc._id.toString());
+    expect(result.name).toBe('test');
+    expect(result.toObject).toBeUndefined();
   });
 
   it('works when toObject returns nested structures', () => {

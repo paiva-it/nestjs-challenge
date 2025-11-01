@@ -1,15 +1,16 @@
 import { RecordRepositoryPort } from '@api/records/domain/ports/record.repository.port';
 import {
-  BadRequestException,
   Inject,
   Injectable,
   Logger,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { RecordMongoMapper } from './mappers/record.mongo.mapper';
 import { InjectModel } from '@nestjs/mongoose';
 import { RecordMongoDocument } from './schemas/record.mongo.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { InvalidObjectIdException } from '@api/core/repository/exceptions/invalid-objectid.exception';
 import mongodbConfig from '@configuration/mongodb.config';
 import { ConfigType } from '@nestjs/config';
 import paginationConfig from '@configuration/pagination.config';
@@ -96,6 +97,9 @@ export class RecordMongoRepository implements RecordRepositoryPort {
     update: Partial<RecordEntityCore>,
   ): Promise<RecordEntity> {
     try {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new InvalidObjectIdException(id);
+      }
       const doc = await this.model.findById(id);
       if (!doc) throw new NotFoundException('Record not found');
 
@@ -124,6 +128,9 @@ export class RecordMongoRepository implements RecordRepositoryPort {
 
   async findById(id: string): Promise<RecordEntity> {
     try {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new InvalidObjectIdException(id);
+      }
       const cached = await this.recordCache.getRecord(id);
       if (cached) {
         return cached;
@@ -265,6 +272,10 @@ export class RecordMongoRepository implements RecordRepositoryPort {
         throw new BadRequestException(
           'Quantity to decrease must be greater than zero',
         );
+      }
+
+      if (!Types.ObjectId.isValid(id)) {
+        throw new InvalidObjectIdException(id);
       }
 
       const updatedDoc = await this.model.findOneAndUpdate(
