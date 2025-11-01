@@ -1,12 +1,14 @@
 import { TransactionalInterceptor } from './transactional.interceptor';
 import { TransactionManager } from './tx.port';
 import { of } from 'rxjs';
+import { silenceLogger } from '@test/__mocks__/framework/logger.mock';
 
 describe('TransactionalInterceptor', () => {
   let tm: jest.Mocked<TransactionManager>;
   let interceptor: TransactionalInterceptor<unknown>;
 
   beforeEach(() => {
+    silenceLogger();
     tm = {
       runInTransaction: jest.fn(<T>(fn: () => Promise<T>) => fn()),
       getContext: jest.fn(),

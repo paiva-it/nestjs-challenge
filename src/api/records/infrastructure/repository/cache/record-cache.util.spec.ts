@@ -1,13 +1,9 @@
 import { RecordCacheUtil } from './record-cache.util';
-import { CachePort } from '@api/core/cache/cache.port';
 import { Logger } from '@nestjs/common';
+import { createCachePortMock } from '@test/__mocks__/cache/cache-port.mock';
 
 describe('RecordCacheUtil', () => {
-  const cache: jest.Mocked<CachePort> = {
-    get: jest.fn(),
-    set: jest.fn(),
-    delete: jest.fn(),
-  } as any;
+  const cache = createCachePortMock();
   const util = new RecordCacheUtil(cache);
   const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
 

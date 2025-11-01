@@ -1,13 +1,6 @@
 import { MockAuthGuard } from './mock-auth.guard';
 import { UnauthorizedException } from '@nestjs/common';
-
-function createContext(headers: Record<string, string | undefined>) {
-  return {
-    switchToHttp: () => ({
-      getRequest: () => ({ headers, user: { id: '123', role: 'ADMIN' } }),
-    }),
-  } as any;
-}
+import { executionContextFactory } from '@test/__mocks__/framework/execution.context.factory.mock';
 
 describe('MockAuthGuard', () => {
   let guard: MockAuthGuard;
@@ -16,7 +9,7 @@ describe('MockAuthGuard', () => {
   });
 
   it('allows when correct bearer token is provided', () => {
-    const ctx = createContext({ authorization: 'Bearer mock-token' });
+    const ctx = executionContextFactory({ authorization: 'Bearer mock-token' });
     const result = guard.canActivate(ctx);
     expect(result).toBe(true);
     const req = ctx.switchToHttp().getRequest();
@@ -24,12 +17,12 @@ describe('MockAuthGuard', () => {
   });
 
   it('throws UnauthorizedException when header missing', () => {
-    const ctx = createContext({});
+    const ctx = executionContextFactory({});
     expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
   });
 
   it('throws UnauthorizedException when token invalid', () => {
-    const ctx = createContext({ authorization: 'Bearer wrong' });
+    const ctx = executionContextFactory({ authorization: 'Bearer wrong' });
     expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
   });
 });

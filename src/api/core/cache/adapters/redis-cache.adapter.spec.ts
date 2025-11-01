@@ -2,21 +2,8 @@ import { RedisCacheAdapter } from './redis-cache.adapter';
 import { Logger } from '@nestjs/common';
 
 jest.mock('redis', () => {
-  const store = new Map<string, string>();
-  return {
-    createClient: jest.fn(() => ({
-      connect: jest.fn().mockResolvedValue(undefined),
-      get: jest.fn(async (key: string) => store.get(key) ?? null),
-      set: jest.fn(async (key: string, val: string) => {
-        store.set(key, val);
-        return 'OK';
-      }),
-      del: jest.fn(async (key: string) => {
-        store.delete(key);
-        return 1;
-      }),
-    })),
-  };
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return require('@test/__mocks__/cache/redis.client.mock').createRedisModuleMock();
 });
 
 describe('RedisCacheAdapter', () => {

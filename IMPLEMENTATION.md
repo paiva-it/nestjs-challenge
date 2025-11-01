@@ -419,11 +419,11 @@ src/
 - Added baseUrl functionality to mirror `tsconfig.json` paths in tests.
 - Moved tsconfig paths registration to `setupFilesAfterEnv` for better initialization timing.
 
-### Coverage Include Path
+## Coverage Include Path
 
 - Included all `*.ts` files in coverage reports for comprehensive analysis.
 
-### Coverage Ignore Rules
+## Coverage Ignore Rules
 
 - Defined specific patterns to exclude non-essential files from coverage reports:
   - main.ts - Application bootstrap file contains no business logic.
@@ -439,3 +439,9 @@ src/
   - \*.request.dto.ts - Request DTOs are type contracts without logic.
   - \*.query.dto.ts - Query DTOs are type contracts without logic.
   - \*.response.dto.ts - Response DTOs are type contracts without logic. (we keep \*.validator.dto.ts for coverage as they contain validation logic)
+
+## Mocks
+
+- Created a central `test/__mocks__` folder for reusable mock implementations.
+- Organized mocks by concern (`db`, `cache`, `external`, `framework`, `domain`).
+- Introduced domain port mocks (repository/service adapters) to exercise higher-level service and controller logic without binding tests to Mongoose or external APIs.

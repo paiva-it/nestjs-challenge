@@ -1,13 +1,9 @@
 import { CursorSearchCacheUtil } from './cursor-search-cache.util';
-import { CachePort } from '@api/core/cache/cache.port';
 import { Logger } from '@nestjs/common';
+import { createCachePortMock } from '@test/__mocks__/cache/cache-port.mock';
 
 describe('CursorSearchCacheUtil', () => {
-  const cache: jest.Mocked<CachePort> = {
-    get: jest.fn(),
-    set: jest.fn(),
-    delete: jest.fn(),
-  } as any;
+  const cache = createCachePortMock();
   const findById = jest.fn();
   const util = new CursorSearchCacheUtil(cache, findById);
   const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();

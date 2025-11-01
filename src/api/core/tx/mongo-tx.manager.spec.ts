@@ -1,6 +1,7 @@
 import { MongoTxManager } from './mongo-tx.manager';
 import { CLS_KEYS } from './tx.constants';
 import { ClsService } from 'nestjs-cls';
+import { silenceLogger } from '@test/__mocks__/framework/logger.mock';
 
 interface MockSession {
   withTransaction: <T>(fn: () => Promise<T>) => Promise<T>;
@@ -14,6 +15,7 @@ describe('MongoTxManager', () => {
   let session: MockSession;
 
   beforeEach(() => {
+    silenceLogger();
     session = {
       withTransaction: jest.fn(async (fn) => fn()),
       endSession: jest.fn(),
@@ -48,9 +50,7 @@ describe('MongoTxManager', () => {
   });
 
   it('should log and rethrow errors', async () => {
-    const spyError = jest
-      .spyOn((manager as any).logger, 'error')
-      .mockImplementation(() => {});
+    const spyError = jest.spyOn((manager as any).logger, 'error');
     const boom = new Error('boom');
     await expect(
       manager.runInTransaction(async () => {
@@ -59,7 +59,6 @@ describe('MongoTxManager', () => {
     ).rejects.toThrow(boom);
     expect(spyError).toHaveBeenCalled();
     expect(cls.set).toHaveBeenCalledWith(CLS_KEYS.mongoSession, null);
-    spyError.mockRestore();
   });
 
   it('getContext should return stored session or null', () => {

@@ -1,35 +1,27 @@
 import { OrderMongoMapper } from './order.mongo.mapper';
+import { createMockOrder } from '@test/__mocks__/db/order.document.mock';
+import { Types } from 'mongoose';
 
 describe('OrderMongoMapper', () => {
   let mapper: OrderMongoMapper;
-  const base = {
-    toObject: function () {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { toObject, version, ...rest } = this;
-      return rest;
-    },
-  };
 
   beforeEach(() => {
     mapper = new OrderMongoMapper();
   });
 
   it('maps document to entity converting recordId to string', () => {
-    const doc: any = {
-      _id: 'mongo-id',
-      recordId: { toString: () => 'rec-1' },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      version: 1,
-      ...base,
-    };
-
-    const entity = mapper.toEntity(doc);
-    expect(entity.recordId).toBe('rec-1');
+    const recordId = new Types.ObjectId();
+    const doc = createMockOrder({ recordId });
+    const entity = mapper.toEntity(doc as any);
+    expect(entity.recordId).toBe(recordId.toString());
+    expect(entity.id).toBe(doc._id.toString());
   });
 
   it('throws when recordId missing', () => {
-    const doc: any = { _id: 'mongo-id', ...base };
-    expect(() => mapper.toEntity(doc)).toThrow('recordId is missing');
+    const doc: any = createMockOrder();
+    delete doc.recordId;
+    expect(() => mapper.toEntity(doc)).toThrow(
+      'recordId is missing in OrderMongoDocument',
+    );
   });
 });

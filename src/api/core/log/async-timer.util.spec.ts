@@ -1,26 +1,10 @@
-import { Logger } from '@nestjs/common';
 import { asyncTimer } from './async-timer.util';
-
-class MockLogger extends Logger {
-  warnings: string[] = [];
-  errors: string[] = [];
-  logs: string[] = [];
-
-  warn(message: string) {
-    this.warnings.push(message);
-  }
-  error(message: string) {
-    this.errors.push(message);
-  }
-  log(message: string) {
-    this.logs.push(message);
-  }
-}
+import { createLoggerMock } from '@test/__mocks__/framework/logger.mock';
 
 describe('asyncTimer', () => {
-  let logger: MockLogger;
+  let logger: ReturnType<typeof createLoggerMock>;
   beforeEach(() => {
-    logger = new MockLogger();
+    logger = createLoggerMock();
   });
 
   it('returns function result', async () => {

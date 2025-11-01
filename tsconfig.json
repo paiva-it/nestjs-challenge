@@ -18,9 +18,9 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@*": ["src/*"],
       "@api/*": ["src/api/*"],
-      "@configuration/*": ["src/configuration/*"]
+      "@configuration/*": ["src/configuration/*"],
+      "@test/*": ["test/*"]
     }
   }
 }

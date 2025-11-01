@@ -1,9 +1,10 @@
 import { recordCacheKey, searchCacheKey } from './key-builder.util';
 import { hash } from '@api/core/utils/hash.utils';
 
-jest.mock('@api/core/utils/hash.utils', () => ({
-  hash: jest.fn(() => 'hashed'),
-}));
+jest.mock('@api/core/utils/hash.utils', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return require('@test/__mocks__/cache/hash.utils.jest.mock').hashUtilsModule;
+});
 
 describe('key-builder.util', () => {
   afterEach(() => jest.clearAllMocks());

@@ -1,24 +1,7 @@
 import { RecordMongoMapper } from './record.mongo.mapper';
 import { Types } from 'mongoose';
 import { RecordMongoDocument } from '../schemas/record.mongo.schema';
-
-class MockRecordDocument implements Partial<RecordMongoDocument> {
-  _id!: Types.ObjectId;
-  searchTokens?: string[];
-  artist?: string;
-  album?: string;
-  qty?: number;
-
-  toObject() {
-    return {
-      _id: this._id,
-      searchTokens: this.searchTokens,
-      artist: this.artist,
-      album: this.album,
-      qty: this.qty,
-    };
-  }
-}
+import { MockRecordDocument } from '@test/__mocks__/db/record.document.mock';
 
 describe('RecordMongoMapper', () => {
   let mapper: RecordMongoMapper;

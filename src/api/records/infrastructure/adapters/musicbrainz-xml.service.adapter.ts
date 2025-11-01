@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { XMLParser } from 'fast-xml-parser';
-import externalConfig from 'src/configuration/external.config';
+import externalConfig from '@configuration/external.config';
 import { CachePort } from '@api/core/cache/cache.port';
 
 @Injectable()

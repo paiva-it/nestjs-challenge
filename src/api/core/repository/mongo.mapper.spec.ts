@@ -1,12 +1,13 @@
 import { MongoMapper } from './mongo.mapper';
 import { Document, Types } from 'mongoose';
+import { MockRecordDocument } from '@test/__mocks__/db/record.document.mock';
 
-class MockDocument implements Partial<Document> {
-  _id!: Types.ObjectId;
-  data: any;
-  toObject() {
-    return { _id: this._id, ...this.data };
-  }
+function createDoc(data: any) {
+  const doc = new MockRecordDocument() as any as Document & { data?: any };
+  doc._id = new Types.ObjectId();
+  doc.data = data;
+  doc.toObject = () => ({ _id: doc._id, ...doc.data });
+  return doc;
 }
 
 type MockData = {
@@ -20,9 +21,7 @@ describe('MongoMapper', () => {
   >();
 
   it('maps `_id` to `id` and spreads remaining fields', () => {
-    const doc = new MockDocument();
-    doc._id = new Types.ObjectId();
-    doc.data = { name: 'test', qty: 5 };
+    const doc = createDoc({ name: 'test', qty: 5 });
 
     const result = mapper.toEntity(doc as any);
 
@@ -39,8 +38,7 @@ describe('MongoMapper', () => {
   });
 
   it('throws when _id is missing', () => {
-    const doc = new MockDocument();
-    doc.data = { name: 'bad' };
+    const doc: any = createDoc({ name: 'bad' });
     doc._id = undefined;
 
     expect(() => mapper.toEntity(doc as any)).toThrow(
@@ -60,12 +58,7 @@ describe('MongoMapper', () => {
   });
 
   it('works when toObject returns nested structures', () => {
-    const doc = new MockDocument();
-    doc._id = new Types.ObjectId();
-    doc.data = {
-      name: 'nested',
-      meta: { info: true },
-    };
+    const doc = createDoc({ name: 'nested', meta: { info: true } });
 
     const result = mapper.toEntity(doc as any);
 
@@ -73,9 +66,7 @@ describe('MongoMapper', () => {
   });
 
   it('converts _id to string', () => {
-    const doc = new MockDocument();
-    doc._id = new Types.ObjectId();
-    doc.data = {};
+    const doc = createDoc({});
 
     const result = mapper.toEntity(doc as any);
 
