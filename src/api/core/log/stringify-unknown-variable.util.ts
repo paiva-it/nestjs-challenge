@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 
-export function stringifyUnkownVariable(input: unknown): string {
+export function stringifyUnknownVariable(input: unknown): string {
   const seen = new WeakSet();
 
   return JSON.stringify(

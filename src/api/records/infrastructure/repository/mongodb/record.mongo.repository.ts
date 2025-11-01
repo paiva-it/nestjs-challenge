@@ -3,7 +3,6 @@ import {
   BadRequestException,
   Inject,
   Injectable,
-  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,8 +18,8 @@ import {
   RecordEntity,
   RecordEntityCore,
 } from '@api/records/domain/entities/record.entity';
-import { stringifyUnkownVariable } from '@api/core/log/stringify-mongo-query.util';
-import { stringifyUnknownError } from '@api/core/log/stringify-unkown-error.util';
+import { stringifyUnknownVariable } from '@api/core/log/stringify-unknown-variable.util';
+import { stringifyUnknownError } from '@api/core/log/stringify-unknown-error.util';
 import { RecordAlreadyExistsException } from '@api/records/application/exceptions/record.already-exists.exception';
 import { SearchRecordQueryDto } from '@api/records/application/dtos/search-record.query.dto';
 import {
@@ -39,22 +38,41 @@ import {
 } from '@api/core/pagination/dtos/offset-pagination.response.dto';
 import { computeOffset } from '@api/core/pagination/utils/compute-offset.util';
 import { InsufficientStockException } from '@api/records/application/exceptions/insufficient-stock.exception';
+import { CachePort } from '@api/core/cache/cache.port';
+import { RecordCacheUtil } from '../cache/record-cache.util';
+import { CursorSearchCacheUtil } from '../cache/cursor-search-cache.util';
+import { OffsetSearchCacheUtil } from '../cache/offset-search-cache.util';
 
 @Injectable()
 export class RecordMongoRepository implements RecordRepositoryPort {
   private readonly logger = new Logger(RecordMongoRepository.name);
   private readonly mapper = new RecordMongoMapper();
+  private readonly recordCache: RecordCacheUtil;
+  private readonly cursorSearchCache: CursorSearchCacheUtil;
+  private readonly offsetSearchCache: OffsetSearchCacheUtil;
 
   constructor(
     @InjectModel(RecordMongoDocument.name)
     private readonly model: Model<RecordMongoDocument>,
+    @Inject(RecordTokenServicePort)
+    private readonly tokenService: RecordTokenServicePort,
+    @Inject(CachePort)
+    private readonly cache: CachePort,
     @Inject(mongodbConfig.KEY)
     private readonly mongodb: ConfigType<typeof mongodbConfig>,
     @Inject(paginationConfig.KEY)
     private readonly pagination: ConfigType<typeof paginationConfig>,
-    @Inject(RecordTokenServicePort)
-    private readonly tokenService: RecordTokenServicePort,
-  ) {}
+  ) {
+    this.recordCache = new RecordCacheUtil(this.cache);
+    this.cursorSearchCache = new CursorSearchCacheUtil(
+      this.cache,
+      (id: string) => this.findById(id),
+    );
+    this.offsetSearchCache = new OffsetSearchCacheUtil(
+      this.cache,
+      (id: string) => this.findById(id),
+    );
+  }
 
   async create(record: Partial<RecordEntityCore>): Promise<RecordEntity> {
     try {
@@ -71,7 +89,7 @@ export class RecordMongoRepository implements RecordRepositoryPort {
       }
 
       this.logger.error(
-        `[Record.create] Failed to create record with payload ${stringifyUnkownVariable(record)}: ${stringifyUnknownError(error)}`,
+        `[Record.create] Failed to create record with payload ${stringifyUnknownVariable(record)}: ${stringifyUnknownError(error)}`,
       );
       throw error;
     }
@@ -92,6 +110,8 @@ export class RecordMongoRepository implements RecordRepositoryPort {
       }
 
       const updated = await doc.save();
+      // Invalidate record cache assynchronously for better performance
+      this.recordCache.deleteRecord(id);
 
       return this.mapper.toEntity(updated);
     } catch (err) {
@@ -100,7 +120,7 @@ export class RecordMongoRepository implements RecordRepositoryPort {
       }
 
       this.logger.error(
-        `[Record.update] Failed to update record with payload ${stringifyUnkownVariable(update)}: ${stringifyUnknownError(err)}`,
+        `[Record.update] Failed to update record with payload ${stringifyUnknownVariable(update)}: ${stringifyUnknownError(err)}`,
       );
       throw err;
     }
@@ -108,14 +128,23 @@ export class RecordMongoRepository implements RecordRepositoryPort {
 
   async findById(id: string): Promise<RecordEntity> {
     try {
+      const cached = await this.recordCache.getRecord(id);
+      if (cached) {
+        return cached;
+      }
+
       const doc = await this.model
         .findById(id)
         .lean<RecordMongoDocument>()
         .exec();
 
       if (!doc) throw new NotFoundException('Record not found');
+      const entity = this.mapper.toEntity(doc);
 
-      return this.mapper.toEntity(doc);
+      // Asynchronously set cache for better performance
+      this.recordCache.setRecord(entity);
+
+      return entity;
     } catch (error) {
       this.logger.error(
         `[Record.findById] Failed to find record id=${id}: ${stringifyUnknownError(error)}`,
@@ -133,21 +162,40 @@ export class RecordMongoRepository implements RecordRepositoryPort {
     const query = mapSearchDtoToMongoFilter(_query);
     const filter = applyCursorQueryMongo(query, cursor);
 
+    const cached = await this.cursorSearchCache.get(filter, { limit, cursor });
+    if (cached) return cached;
+
     const docs = await asyncTimer(
-      `[Record.findWithCursorPagination] filter=${stringifyUnkownVariable(filter)} limit=${limit}`,
+      `[Record.findWithCursorPagination] (MISS) filter=${stringifyUnknownVariable(filter)} limit=${limit}`,
       this.model
         .find(filter)
         .sort({ _id: 1 })
-        .limit(limit + 1)
-        .lean<RecordMongoDocument[]>()
+        .select({ _id: 1 })
+        .lean<{ _id: string }[]>()
         .exec(),
       this.logger,
       this.mongodb.queryWarningThresholdMs,
     );
+    const ids = docs.map((d) => d._id);
+    this.cursorSearchCache.set(filter, ids);
 
-    const entities = docs.map((doc) => this.mapper.toEntity(doc));
+    const hydrated = await this.cursorSearchCache.get(filter, {
+      limit,
+      cursor,
+    });
+    if (hydrated) return hydrated;
 
-    return buildCursorPaginationResponse(cursor, entities, limit);
+    const fallbackDocs = await this.model
+      .find(filter)
+      .sort({ _id: 1 })
+      .limit(limit + 1)
+      .lean<RecordMongoDocument[]>()
+      .exec();
+    const fallbackEntities = fallbackDocs.map((doc) =>
+      this.mapper.toEntity(doc),
+    );
+
+    return buildCursorPaginationResponse(cursor, fallbackEntities, limit);
   }
 
   async findWithOffsetPagination(
@@ -162,36 +210,55 @@ export class RecordMongoRepository implements RecordRepositoryPort {
     const query = mapSearchDtoToMongoFilter(_query);
     const { normalizedPage, offset } = computeOffset(page, limit);
 
-    const [itemsResult, totalResult] = await asyncTimer(
-      `[Record.findWithOffsetPagination] query=${stringifyUnkownVariable(
-        query,
-      )} page=${normalizedPage} limit=${limit}`,
-      Promise.allSettled([
-        this.model
-          .find(query)
-          .sort({ _id: 1 })
-          .skip(offset)
-          .limit(limit)
-          .lean<RecordMongoDocument[]>()
-          .exec(),
-        this.model.countDocuments(query).exec(),
-      ]),
+    const cached = await this.offsetSearchCache.get(
+      query,
+      {
+        limit,
+        page: normalizedPage,
+      },
+      offset,
+    );
+    if (cached) return cached;
+
+    const docs = await asyncTimer(
+      `[Record.findWithOffsetPagination] (MISS) query=${stringifyUnknownVariable(query)} page=${normalizedPage} limit=${limit}`,
+      this.model
+        .find(query)
+        .sort({ _id: 1 })
+        .select({ _id: 1 })
+        .lean<{ _id: string }[]>()
+        .exec(),
       this.logger,
       this.mongodb.queryWarningThresholdMs,
     );
+    const ids = docs.map((d) => d._id);
+    this.offsetSearchCache.set(query, ids);
 
-    if (itemsResult.status === 'rejected') {
-      throw new InternalServerErrorException(itemsResult.reason);
-    }
-    if (totalResult.status === 'rejected') {
-      throw new InternalServerErrorException(totalResult.reason);
-    }
+    const hydrated = await this.offsetSearchCache.get(
+      query,
+      {
+        limit,
+        page: normalizedPage,
+      },
+      offset,
+    );
+    if (hydrated) return hydrated;
 
-    const entities = itemsResult.value.map((doc) => this.mapper.toEntity(doc));
+    const fallbackDocs = await this.model
+      .find(query)
+      .sort({ _id: 1 })
+      .skip(offset)
+      .limit(limit)
+      .lean<RecordMongoDocument[]>()
+      .exec();
+    const fallbackEntities = fallbackDocs.map((doc) =>
+      this.mapper.toEntity(doc),
+    );
 
+    const total = ids.length;
     return buildOffsetPaginationResponse(
-      entities,
-      totalResult.value,
+      fallbackEntities,
+      total,
       normalizedPage,
       limit,
     );
@@ -220,6 +287,9 @@ export class RecordMongoRepository implements RecordRepositoryPort {
 
         throw new InsufficientStockException(qty, doc.qty);
       }
+
+      // Invalidate record cache assynchronously for better performance
+      this.recordCache.deleteRecord(id);
 
       return this.mapper.toEntity(updatedDoc);
     } catch (error) {

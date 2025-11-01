@@ -14,6 +14,8 @@ import { MongoTxModule } from '@api/core/tx/mongo-tx.module';
 import { RecordServicePort } from './domain/ports/record.service.port';
 import { RecordTracklistServicePort } from './domain/ports/record-tracklist.service.port';
 import { MusicBrainzXMLServiceAdapter } from './infrastructure/adapters/musicbrainz-xml.service.adapter';
+import { CachePort } from '@api/core/cache/cache.port';
+import { RedisCacheAdapter } from '@api/core/cache/adapters/redis-cache.adapter';
 
 @Module({
   imports: [
@@ -24,6 +26,10 @@ import { MusicBrainzXMLServiceAdapter } from './infrastructure/adapters/musicbra
   ],
   controllers: [RecordController],
   providers: [
+    {
+      provide: CachePort,
+      useClass: RedisCacheAdapter,
+    },
     {
       provide: RecordTracklistServicePort,
       useClass: MusicBrainzXMLServiceAdapter,

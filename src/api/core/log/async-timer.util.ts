@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { stringifyUnknownError } from './stringify-unkown-error.util';
+import { stringifyUnknownError } from './stringify-unknown-error.util';
 
 export async function asyncTimer<T>(
   label: string,

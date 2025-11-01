@@ -1,4 +1,4 @@
-import { stringifyUnknownError } from '@api/core/log/stringify-unkown-error.util';
+import { stringifyUnknownError } from '@api/core/log/stringify-unknown-error.util';
 import { MusicBrainzReleaseResponseDto } from '@api/records/infrastructure/adapters/dtos/musicbrainz-release.response.dto';
 import {
   RecordEntity,
@@ -16,6 +16,7 @@ import {
 import { ConfigType } from '@nestjs/config';
 import { XMLParser } from 'fast-xml-parser';
 import externalConfig from 'src/configuration/external.config';
+import { CachePort } from '@api/core/cache/cache.port';
 
 @Injectable()
 export class MusicBrainzXMLServiceAdapter
@@ -23,25 +24,75 @@ export class MusicBrainzXMLServiceAdapter
 {
   private readonly logger = new Logger(MusicBrainzXMLServiceAdapter.name);
   private readonly parser = new XMLParser();
+  private readonly TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+  private readonly NEGATIVE_CACHE_TTL_SECONDS = 6 * 60 * 60; // 6 hours
 
   constructor(
+    @Inject(CachePort) private readonly cache: CachePort,
     @Inject(externalConfig.KEY)
     private readonly external: ConfigType<typeof externalConfig>,
   ) {}
 
-  shouldRefetch(
+  shouldUpdate(
     current: Partial<RecordEntity>,
     update: Partial<RecordEntityCore>,
   ): boolean {
     return current.mbid !== update.mbid;
   }
 
-  async fetchTracklist(record: Partial<RecordEntity>): Promise<string[]> {
+  async getTracklist(record: Partial<RecordEntity>): Promise<string[]> {
     if (!record?.mbid || typeof record.mbid !== 'string') {
       return [];
     }
 
-    const url = `https://musicbrainz.org/ws/2/release/${record.mbid}?inc=recordings&fmt=xml`;
+    const cached = await this.getCache(record.mbid);
+    if (cached) {
+      return cached;
+    }
+
+    const tracklist = await this.fetchTracklist(record.mbid);
+
+    // Asynchronously set cache for better performance
+    this.setCache(record.mbid, tracklist);
+
+    return tracklist;
+  }
+
+  private cacheKey(mbid: string): string {
+    return `musicbrainz:tracklist:${mbid}`;
+  }
+
+  private async getCache(mbid: string): Promise<string[] | null> {
+    try {
+      return await this.cache.get<string[]>(this.cacheKey(mbid));
+    } catch (error) {
+      this.logger.warn(
+        `[MusicBrainzService.getCache] Failed to get cache for MBID ${mbid}: ${stringifyUnknownError(
+          error,
+        )}`,
+      );
+      return null;
+    }
+  }
+
+  private async setCache(mbid: string, tracklist: string[]): Promise<void> {
+    try {
+      const ttl = tracklist.length
+        ? this.TTL_SECONDS
+        : this.NEGATIVE_CACHE_TTL_SECONDS;
+
+      await this.cache.set<string[]>(this.cacheKey(mbid), tracklist, ttl);
+    } catch (error) {
+      this.logger.warn(
+        `[MusicBrainzService.setCache] Failed to set cache for MBID ${mbid}: ${stringifyUnknownError(
+          error,
+        )}`,
+      );
+    }
+  }
+
+  private async fetchTracklist(mbid: string): Promise<string[]> {
+    const url = `https://musicbrainz.org/ws/2/release/${mbid}?inc=recordings&fmt=xml`;
     const headers = { 'User-Agent': this.external.userAgent };
 
     const controller = new AbortController();
@@ -57,7 +108,7 @@ export class MusicBrainzXMLServiceAdapter
       });
 
       if (response.status === 404) {
-        throw new NotFoundException(`MBID '${record.mbid}' not found`);
+        throw new NotFoundException(`MBID '${mbid}' not found`);
       }
 
       if (response.status === 503 || response.status === 429) {
@@ -80,12 +131,12 @@ export class MusicBrainzXMLServiceAdapter
       return await release.getTrackList();
     } catch (error) {
       if (error.name === 'AbortError') {
-        this.logger.warn(`MusicBrainz timeout for MBID ${record.mbid}`);
+        this.logger.warn(`MusicBrainz timeout for MBID ${mbid}`);
         return [];
       }
 
       this.logger.warn(
-        `[MusicBrainzService.fetchTracklist] Failed to fetch tracklist for MBID ${record.mbid}: ${stringifyUnknownError(error)}`,
+        `[MusicBrainzService.fetchTracklist] Failed to fetch tracklist for MBID ${mbid}: ${stringifyUnknownError(error)}`,
       );
 
       return [];

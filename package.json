@@ -8,7 +8,7 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "mongo:start": "docker compose -f ./docker-compose-mongo.yml up -d",
+    "infra:start": "docker compose -f ./docker-compose-infra.yml up -d",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -36,6 +36,7 @@
     "joi": "^18.0.1",
     "mongoose": "^8.11.0",
     "nestjs-cls": "^6.0.1",
+    "redis": "^5.9.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1"

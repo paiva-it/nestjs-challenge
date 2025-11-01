@@ -18,6 +18,10 @@ export const validationSchema = Joi.object({
     .empty('')
     .default(100),
 
+  REDIS_HOST: Joi.string().required(),
+  REDIS_PORT: Joi.number().default(6379),
+  REDIS_TTL_SECONDS: Joi.number().integer().positive().empty('').default(86400),
+
   HOST: Joi.string().hostname().default('0.0.0.0'),
   PORT: Joi.number().port().default(3000),
 

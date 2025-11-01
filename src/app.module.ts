@@ -11,12 +11,19 @@ import serverConfig from './configuration/server.config';
 import externalConfig from './configuration/external.config';
 import { RecordModule } from '@api/records/record.module';
 import { OrderModule } from '@api/orders/order.module';
+import redisConfig from '@configuration/redis.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [serverConfig, mongodbConfig, paginationConfig, externalConfig],
+      load: [
+        serverConfig,
+        mongodbConfig,
+        redisConfig,
+        paginationConfig,
+        externalConfig,
+      ],
       validationSchema,
       validationOptions: {
         abortEarly: false,

@@ -25,7 +25,7 @@ export class RecordService implements RecordServicePort {
   ) {}
 
   async create(dto: CreateRecordRequestDTO): Promise<RecordEntity> {
-    const tracklist = await this.tracklistService.fetchTracklist(dto);
+    const tracklist = await this.tracklistService.getTracklist(dto);
 
     return await this.repository.create({ ...dto, tracklist });
   }
@@ -35,8 +35,8 @@ export class RecordService implements RecordServicePort {
     const current = await this.repository.findById(id);
     const mutatedDto: Partial<RecordEntityCore> = { ...dto };
 
-    if (this.tracklistService.shouldRefetch(current, dto)) {
-      mutatedDto.tracklist = await this.tracklistService.fetchTracklist(dto);
+    if (this.tracklistService.shouldUpdate(current, dto)) {
+      mutatedDto.tracklist = await this.tracklistService.getTracklist(dto);
     }
 
     return await this.repository.update(id, mutatedDto);

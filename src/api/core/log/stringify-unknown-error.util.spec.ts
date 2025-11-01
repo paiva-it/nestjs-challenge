@@ -1,4 +1,4 @@
-import { stringifyUnknownError } from './stringify-unkown-error.util';
+import { stringifyUnknownError } from './stringify-unknown-error.util';
 
 describe('stringifyUnknownError', () => {
   it('returns stack trace when error has stack property', () => {

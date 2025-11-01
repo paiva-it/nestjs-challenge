@@ -183,7 +183,7 @@
 - Implemented POST `/orders` endpoint to create a new order.
 - Validates input and returns created order.
 
-# Rafactor Order / Record repo relationship and use @nestjs/transactional for all transactions
+# Refactor Order / Record repo relationship and use @nestjs/transactional for all transactions
 
 ## Research
 
@@ -273,7 +273,7 @@ src/
 
 ## Testing
 
-- Dropped most tests as they were tightly coupled to Mongoose and the previous structure.
+- Dropped most previous tests as they were tightly coupled to Mongoose and the previous structure.
 - Prepared the repo for new unit tests on a future implementation, more decoupled and easier to mock.
 
 # Extend API to use MBIDs for Records
@@ -378,3 +378,34 @@ src/
 
 - Caching MB responses to reduce latency and external calls.
 - More comprehensive error handling for various failure scenarios (network issues, invalid MBIDs, parsing errors).
+
+# Implement Caching
+
+## Redis
+
+- Configured in String Mode for key value pairs.
+- Using AOF (append only file) for data durability and more safety on crash.
+- Using last-recently-used (LRU) eviction policy to keep the most relevant data in cache when memory limit is reached.
+
+## Caching in MusicBrainzXMLServiceAdapter
+
+- Injected `CachePort` to store/retrieve tracklists by MBID.
+- Cache lookup before MB API calls; store results with 30-day TTL asynchronously.
+- Graceful cache failure handling to preserve main flow integrity.
+- Automatic negative caching with shorter TTL for failed fetches through existing architecture.
+
+## Caching Record
+
+- Cache individual `RecordEntity` objects keyed by `record:<id>` to avoid repeated DB lookups.
+- Set on cache-miss during `findById`, and invalidate asynchronously on update/stock changes.
+- Use a 10-minute TTL to balance freshness and performance without complex invalidation logic.
+- Hydrate from cache before hitting the database, falling back gracefully on cache failures.
+- Keeps payloads small and domain-consistent by caching mapped entities rather than raw documents.
+
+## Caching Record Search
+
+- Cache sorted lists of record IDs derived from search filters, keyed by hashed normalized queries.
+- Slice IDs in memory for offset/cursor paging, hydrating entities individually via `findById`.
+- Use a short 60-second TTL to avoid storing stale search results while accelerating repeated queries.
+- Avoid complex multi-key invalidation by relying on expiration and lightweight negative caching.
+- Only select `_id` from database on cache population to minimize payloads and improve throughput.
