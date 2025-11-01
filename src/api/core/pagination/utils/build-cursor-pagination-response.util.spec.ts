@@ -1,8 +1,8 @@
-import { buildCursorPaginationResponse } from './cursor-pagination.response.dto';
+import { buildCursorPaginationResponse } from './build-cursor-pagination-response.util';
 
-function makeDocs(count: number): { _id: string }[] {
+function makeDocs(count: number): { id: string }[] {
   return Array.from({ length: count }, (_, i) => ({
-    _id: i.toString().padStart(24, '0'),
+    id: i.toString().padStart(24, '0'),
   }));
 }
 
@@ -12,16 +12,16 @@ describe('buildCursorPaginationResponse', () => {
     const res = buildCursorPaginationResponse(null, docs, 3);
     expect(res.data).toHaveLength(3);
     expect(res.hasNextPage).toBe(true);
-    expect(res.nextCursor).toBe(docs[2]._id);
-    expect(res.startCursor).toBe(docs[0]._id);
-    expect(res.endCursor).toBe(docs[2]._id);
+    expect(res.nextCursor).toBe(docs[2].id);
+    expect(res.startCursor).toBe(docs[0].id);
+    expect(res.endCursor).toBe(docs[2].id);
     expect(res.hasPreviousPage).toBe(false);
   });
 
   it('sets previousCursor and hasPreviousPage when cursor provided', () => {
     const docs = makeDocs(4);
-    const res = buildCursorPaginationResponse(docs[0]._id, docs.slice(1), 2);
-    expect(res.previousCursor).toBe(docs[0]._id);
+    const res = buildCursorPaginationResponse(docs[0].id, docs.slice(1), 2);
+    expect(res.previousCursor).toBe(docs[0].id);
     expect(res.hasPreviousPage).toBe(true);
   });
 

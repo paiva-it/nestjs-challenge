@@ -22,20 +22,16 @@ import { stringifyUnknownVariable } from '@api/core/log/stringify-unknown-variab
 import { stringifyUnknownError } from '@api/core/log/stringify-unknown-error.util';
 import { RecordAlreadyExistsException } from '@api/records/application/exceptions/record.already-exists.exception';
 import { SearchRecordQueryDto } from '@api/records/application/dtos/search-record.query.dto';
-import {
-  buildCursorPaginationResponse,
-  CursorPaginationResponseDto,
-} from '@api/core/pagination/dtos/cursor-pagination.response.dto';
+import { CursorPaginationResponseDto } from '@api/core/pagination/dtos/cursor-pagination.response.dto';
+import { buildCursorPaginationResponse } from '@api/core/pagination/utils/build-cursor-pagination-response.util';
 import { CursorPaginationQueryDto } from '@api/core/pagination/dtos/cursor-pagination.query.dto';
 import { ensureLimitWithinBounds } from '@api/core/pagination/utils/ensure-limit.util';
 import { asyncTimer } from '@api/core/log/async-timer.util';
 import { applyCursorQueryMongo } from '@api/core/repository/utils/apply-cursor-query.mongo.util';
 import { mapSearchDtoToMongoFilter } from './mappers/record.filter.mapper';
 import { OffsetPaginationQueryDto } from '@api/core/pagination/dtos/offset-pagination.query.dto';
-import {
-  buildOffsetPaginationResponse,
-  OffsetPaginationResponseDto,
-} from '@api/core/pagination/dtos/offset-pagination.response.dto';
+import { OffsetPaginationResponseDto } from '@api/core/pagination/dtos/offset-pagination.response.dto';
+import { buildOffsetPaginationResponse } from '@api/core/pagination/utils/build-offset-pagination-response.util';
 import { computeOffset } from '@api/core/pagination/utils/compute-offset.util';
 import { InsufficientStockException } from '@api/records/application/exceptions/insufficient-stock.exception';
 import { CachePort } from '@api/core/cache/cache.port';
@@ -110,7 +106,7 @@ export class RecordMongoRepository implements RecordRepositoryPort {
       }
 
       const updated = await doc.save();
-      // Invalidate record cache assynchronously for better performance
+
       this.recordCache.deleteRecord(id);
 
       return this.mapper.toEntity(updated);
@@ -141,7 +137,6 @@ export class RecordMongoRepository implements RecordRepositoryPort {
       if (!doc) throw new NotFoundException('Record not found');
       const entity = this.mapper.toEntity(doc);
 
-      // Asynchronously set cache for better performance
       this.recordCache.setRecord(entity);
 
       return entity;
@@ -288,7 +283,6 @@ export class RecordMongoRepository implements RecordRepositoryPort {
         throw new InsufficientStockException(qty, doc.qty);
       }
 
-      // Invalidate record cache assynchronously for better performance
       this.recordCache.deleteRecord(id);
 
       return this.mapper.toEntity(updatedDoc);

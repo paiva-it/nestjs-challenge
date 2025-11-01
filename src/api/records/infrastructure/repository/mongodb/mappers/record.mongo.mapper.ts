@@ -1,6 +1,6 @@
 import { RecordEntity } from '@api/records/domain/entities/record.entity';
 import { RecordMongoDocument } from '../schemas/record.mongo.schema';
-import { MongoMapper } from '@api/core/repository/mongo.mapper';
+import { MongoMapper } from '../../../../../core/repository/mongo.mapper';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

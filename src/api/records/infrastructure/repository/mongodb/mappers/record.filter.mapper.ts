@@ -1,7 +1,7 @@
-import { SearchRecordQueryDto } from '@api/records/application/dtos/search-record.query.dto';
+import { SearchRecordQueryDto } from '../../../../application/dtos/search-record.query.dto';
 import { FilterQuery } from 'mongoose';
 import { RecordMongoDocument } from '../schemas/record.mongo.schema';
-import { normalizeString } from '@api/core/utils/normalize-string.util';
+import { normalizeString } from '../../../../../core/utils/normalize-string.util';
 
 export function mapSearchDtoToMongoFilter(
   filters: SearchRecordQueryDto,

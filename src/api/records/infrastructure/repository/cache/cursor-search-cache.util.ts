@@ -6,10 +6,8 @@ import { stringifyUnknownVariable } from '@api/core/log/stringify-unknown-variab
 import { searchCacheKey } from './key-builder.util';
 import { CachePort } from '@api/core/cache/cache.port';
 import { CursorPaginationQueryDto } from '@api/core/pagination/dtos/cursor-pagination.query.dto';
-import {
-  buildCursorPaginationResponse,
-  CursorPaginationResponseDto,
-} from '@api/core/pagination/dtos/cursor-pagination.response.dto';
+import { CursorPaginationResponseDto } from '@api/core/pagination/dtos/cursor-pagination.response.dto';
+import { buildCursorPaginationResponse } from '@api/core/pagination/utils/build-cursor-pagination-response.util';
 import { RecordRepositoryPort } from '@api/records/domain/ports/record.repository.port';
 
 export class CursorSearchCacheUtil {

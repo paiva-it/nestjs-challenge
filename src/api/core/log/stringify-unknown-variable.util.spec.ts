@@ -76,4 +76,20 @@ describe('stringifyMongoQuery', () => {
     expect(r1).toBe(r2);
     expect(r1).toContain('"array": "[Array(3)]"');
   });
+
+  it('serializes primitive values directly', () => {
+    expect(stringifyUnknownVariable('hello')).toBe('"hello"');
+    expect(stringifyUnknownVariable(123)).toBe('"123"');
+    expect(stringifyUnknownVariable(true)).toBe('true');
+    expect(stringifyUnknownVariable(null)).toBe('null');
+    expect(stringifyUnknownVariable(undefined)).toBe(undefined);
+  });
+
+  it('detects circular references deep inside objects', () => {
+    const a: any = {};
+    const b: any = { child: a };
+    a.child = b;
+    const result = stringifyUnknownVariable(a);
+    expect(result).toContain('[Circular]');
+  });
 });

@@ -9,7 +9,7 @@ describe('normalizeString', () => {
     expect(normalizeString('hello    world   again')).toBe('hello world again');
   });
 
-  it('trims whitespace', () => {
+  it('trims surrounding whitespace', () => {
     expect(normalizeString('   surrounded by space   ')).toBe(
       'surrounded by space',
     );
@@ -20,5 +20,29 @@ describe('normalizeString', () => {
       'árvíztűrő tükörfúrógép',
     );
     expect(normalizeString('你好   世界')).toBe('你好 世界');
+  });
+
+  it('returns empty string when input is empty', () => {
+    expect(normalizeString('')).toBe('');
+  });
+
+  it('returns empty string when only whitespace provided', () => {
+    expect(normalizeString('     ')).toBe('');
+  });
+
+  it('collapses other whitespace characters (tabs/newlines)', () => {
+    expect(normalizeString('hello\t\tworld\n\nagain')).toBe(
+      'hello world again',
+    );
+  });
+
+  it('handles non-breaking spaces correctly', () => {
+    expect(normalizeString('hello\u00A0\u00A0world')).toBe('hello world');
+  });
+
+  it('is idempotent', () => {
+    const once = normalizeString('  Hello   World  ');
+    const twice = normalizeString(once);
+    expect(twice).toBe(once);
   });
 });

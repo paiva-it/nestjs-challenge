@@ -409,3 +409,33 @@ src/
 - Use a short 60-second TTL to avoid storing stale search results while accelerating repeated queries.
 - Avoid complex multi-key invalidation by relying on expiration and lightweight negative caching.
 - Only select `_id` from database on cache population to minimize payloads and improve throughput.
+
+# Testing
+
+## Jest Setup
+
+- Set up global test environment and configurations in `jest.config.js`.
+- Updated baseUrl to rootDir for proper path resolution.
+- Added baseUrl functionality to mirror `tsconfig.json` paths in tests.
+- Moved tsconfig paths registration to `setupFilesAfterEnv` for better initialization timing.
+
+### Coverage Include Path
+
+- Included all `*.ts` files in coverage reports for comprehensive analysis.
+
+### Coverage Ignore Rules
+
+- Defined specific patterns to exclude non-essential files from coverage reports:
+  - main.ts - Application bootstrap file contains no business logic.
+  - \*.module.ts - NestJS module files contain no business logic.
+  - \*.decorator.ts - Decorators are metadata without behavior.
+  - \*.config.ts - Configuration files expose static factories without logic.
+  - \*.entity.ts - Entities are data structures without behavior.
+  - \*.schema.ts - Schemas are static definitions without logic.
+  - \*.enum.ts - Enums are static definitions without logic.
+  - \*.interface.ts - Interfaces are contracts without implementation.
+  - \*.constants.ts - Constants files expose static values without logic.
+  - \*.port.ts - Ports are abstractions without logic.
+  - \*.request.dto.ts - Request DTOs are type contracts without logic.
+  - \*.query.dto.ts - Query DTOs are type contracts without logic.
+  - \*.response.dto.ts - Response DTOs are type contracts without logic. (we keep \*.validator.dto.ts for coverage as they contain validation logic)

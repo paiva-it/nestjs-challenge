@@ -10,7 +10,7 @@ export const validationSchema = Joi.object({
     .required()
     .messages({
       'any.required': 'MONGO_URL is required',
-      'string.uri': 'MONGO_URL must be a valid MongoDB URI',
+      'string.uriCustomScheme': 'MONGO_URL must be a valid MongoDB URI',
     }),
   MONGO_QUERY_WARNING_THRESHOLD_MS: Joi.number()
     .integer()

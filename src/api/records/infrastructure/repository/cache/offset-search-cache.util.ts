@@ -6,10 +6,8 @@ import { stringifyUnknownVariable } from '@api/core/log/stringify-unknown-variab
 import { searchCacheKey } from './key-builder.util';
 import { CachePort } from '@api/core/cache/cache.port';
 import { OffsetPaginationQueryDto } from '@api/core/pagination/dtos/offset-pagination.query.dto';
-import {
-  buildOffsetPaginationResponse,
-  OffsetPaginationResponseDto,
-} from '@api/core/pagination/dtos/offset-pagination.response.dto';
+import { OffsetPaginationResponseDto } from '@api/core/pagination/dtos/offset-pagination.response.dto';
+import { buildOffsetPaginationResponse } from '@api/core/pagination/utils/build-offset-pagination-response.util';
 import { RecordRepositoryPort } from '@api/records/domain/ports/record.repository.port';
 
 export class OffsetSearchCacheUtil {

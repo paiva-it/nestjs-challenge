@@ -34,4 +34,19 @@ describe('generateNgrams', () => {
       'case',
     ]);
   });
+
+  it('handles unicode characters', () => {
+    const result = generateNgrams('árvíz');
+    expect(result).toEqual(['á', 'ár', 'árv', 'árví', 'árvíz']);
+  });
+
+  it('handles multiple consecutive spaces explicitly', () => {
+    const result = generateNgrams('foo     bar');
+    expect(result).toEqual(['f', 'fo', 'foo', 'b', 'ba', 'bar']);
+  });
+
+  it('strips punctuation implicitly via normalization', () => {
+    const result = generateNgrams('AC/DC');
+    expect(result).toEqual(['a', 'ac', 'ac/', 'ac/d', 'ac/dc']);
+  });
 });

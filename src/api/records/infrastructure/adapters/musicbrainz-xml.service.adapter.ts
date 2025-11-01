@@ -1,5 +1,5 @@
 import { stringifyUnknownError } from '@api/core/log/stringify-unknown-error.util';
-import { MusicBrainzReleaseResponseDto } from '@api/records/infrastructure/adapters/dtos/musicbrainz-release.response.dto';
+import { MusicBrainzReleaseResponseDto } from '@api/records/infrastructure/adapters/dtos/musicbrainz-release.response.validator.dto';
 import {
   RecordEntity,
   RecordEntityCore,
@@ -52,7 +52,6 @@ export class MusicBrainzXMLServiceAdapter
 
     const tracklist = await this.fetchTracklist(record.mbid);
 
-    // Asynchronously set cache for better performance
     this.setCache(record.mbid, tracklist);
 
     return tracklist;

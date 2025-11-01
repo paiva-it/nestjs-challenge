@@ -1,7 +1,7 @@
 import {
   RecordCategory,
   RecordFormat,
-} from '@api/records/domain/entities/record.enum';
+} from '../../../../domain/entities/record.enum';
 import { mapSearchDtoToMongoFilter } from './record.filter.mapper';
 
 describe('mapSearchDtoToMongoFilter', () => {
