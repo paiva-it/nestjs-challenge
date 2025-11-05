@@ -9,7 +9,7 @@ import {
 export class SearchRecordQueryDto {
   @ApiProperty({
     description:
-      'Fuzzy search query for all text fields (artist, album, category and format)',
+      'Partial word search query for all text fields (artist, album, category and format)',
     type: String,
     example: 'Beatles Abbey Road Vinyl',
     required: false,

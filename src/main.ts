@@ -27,6 +27,7 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Record API')
+    .addBearerAuth()
     .setDescription('The record management API')
     .build();
 
